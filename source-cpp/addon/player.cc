@@ -24,6 +24,8 @@ void Player::setEngine(Engine* engine) {
 
     control = nullptr;
     spectate = nullptr;
+    pids[0] = 0;
+    pids[1] = 0;
 
     // Clear cell cache
     cache.clear();
