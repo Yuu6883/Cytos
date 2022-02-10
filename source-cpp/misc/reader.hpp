@@ -58,6 +58,13 @@ public:
         }
     }
 
+    inline void read(void* out, size_t size) {
+        if (check(size)) {
+            memcpy(out, ptr, size);
+            ptr += size;
+        }
+    }
+
     inline string_view utf8() {
         char* start = ptr;
         char c = 'a';
