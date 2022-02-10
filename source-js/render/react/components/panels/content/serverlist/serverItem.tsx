@@ -24,11 +24,14 @@ export const ServerItem = ({ data }: Props) => {
             className={`${Style.item} ${data.players < 0 && Style.offline}`}
             onClick={() => {
                 if (data.players >= 0) {
-                    Client.instance.connect(data.name, data.region === 'benchmark');
+                    const mode =
+                        data.region === 'benchmark' ? `bench-${data.name}` : data.name;
+                    Client.instance.connect(mode);
                     CurrServer.connected.set(true);
 
                     const name = `${data.region} ${data.name.toLocaleUpperCase()}`;
                     CurrServer.name.set(name);
+                    CurrServer.mode.set(mode);
                     SYS.gameConnected(name);
                     ReactTooltip.hide();
                 }
