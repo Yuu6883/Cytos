@@ -8,11 +8,11 @@ import Client from '../../../../../client';
 import { Themes } from '../../../../../client/settings/themes';
 import { hexToRGB } from '../../../../../client/cell/colors';
 import { getBadgeStyleRGB } from '../../../../../client/util/colors';
+import { basicPopup } from './popups';
 
 export const Skins = () => {
     const inputs = useStore(InputStore);
     const skins = useStore(SkinStore);
-    const fileRef = useRef<HTMLInputElement>();
 
     // Bad lib
     useEffect(() => void ReactToolTip.hide(), []);
@@ -22,7 +22,7 @@ export const Skins = () => {
     }, [skins.value]);
 
     const onClickItem = (index: number, type: number) => {
-        const selected = skins.mySkins.value[index]?.hash;
+        const selected = skins.mySkins.value[index];
         if (type === 1)
             inputs.skin1.set(inputs.skin1.value === selected ? null : selected);
         if (type === 2)
@@ -33,19 +33,17 @@ export const Skins = () => {
     const onBlur = () => SaveInputs();
 
     const onPaste: React.ClipboardEventHandler<HTMLInputElement> = e => {
-        inputs.upload.merge([e.clipboardData.getData('text')]);
-        inputs.hasInput.set(true);
-    };
-
-    const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        const urls = Array.from({ length: files.length }, (_, i) =>
-            URL.createObjectURL(files.item(i)),
-        );
-        inputs.upload.merge(urls);
-        inputs.hasInput.set(true);
-        e.target.files = null;
-        e.target.value = '';
+        const url = e.clipboardData.getData('text');
+        if (skins.mySkins.value.includes(url)) {
+            basicPopup(`Duplicate skin ignored: "${url}"`);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            skins.mySkins.merge([url]);
+        };
+        img.onerror = () => basicPopup(`Failed to load image from "${url}"`);
+        img.src = url;
     };
 
     const onDelete = async (e: React.MouseEvent<HTMLElement, MouseEvent>, index) => {
@@ -59,14 +57,6 @@ export const Skins = () => {
 
     return (
         <div className={Style.container}>
-            <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                hidden
-                multiple
-                onChange={onUpload}
-            />
             <div style={{ display: 'inline-flex', padding: '4px', alignItems: 'center' }}>
                 <input
                     onBlur={onBlur}
@@ -85,17 +75,17 @@ export const Skins = () => {
             </p>
             <div className={Style.skins}>
                 {Array.from({ length: skins.maxSlots.value }, (_, i) => {
-                    const hash = skins.mySkins.value[i]?.hash;
+                    const skin = skins.mySkins.value[i];
 
-                    if (hash) {
+                    if (skin) {
                         return (
                             <Skin
-                                key={hash || i}
-                                url={`/skin/${hash}.webp`}
+                                key={skin + i}
+                                url={skin}
                                 onClick={() => onClickItem(i, 1)}
                                 onContextMenu={() => onClickItem(i, 2)}
-                                isSkin1={inputs.skin1.value === hash}
-                                isSkin2={inputs.skin2.value === hash}
+                                isSkin1={inputs.skin1.value === skin}
+                                isSkin2={inputs.skin2.value === skin}
                                 onDelete={e => onDelete(e, i)}
                                 count={skins.mySkins.length}
                             />
@@ -172,9 +162,7 @@ const Skin = ({ url, onClick, onContextMenu, onDelete, isSkin1, isSkin2 }: SkinP
                 className="rainbow"
                 crossOrigin="anonymous"
                 src={url}
-                onLoad={e =>
-                    setColor(Client.instance.sampleColor(e.currentTarget, '#888888'))
-                }
+                onLoad={e => setColor(Client.sampleColor(e.currentTarget, '#888888'))}
                 alt="Skin"
             />
         </div>
