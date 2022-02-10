@@ -13,6 +13,7 @@ constexpr BotAI ultra_ai {
 };
 
 constexpr OPT ultra_opt {
+    .MODE = "ultra",
     .CELL_LIMIT = 65536,
 
     .MAP_HW = 24000.f,

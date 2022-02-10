@@ -23,6 +23,8 @@ struct BotAI {
 constexpr BotAI default_ai;
 
 struct OPT {
+    const char* MODE = "default";
+
     size_t CELL_LIMIT = 65536;
 
     float MAP_HW = 20000.f;

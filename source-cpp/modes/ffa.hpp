@@ -15,6 +15,7 @@ constexpr BotAI ffa_ai {
 };
 
 constexpr OPT ffa_opt {
+    .MODE = "ffa",
     .CELL_LIMIT = 65536,
 
     .MAP_HW = 16000.f,

@@ -13,6 +13,7 @@ constexpr BotAI instant_ai {
 };
 
 constexpr OPT instant_opt {
+    .MODE = "instant",
     .CELL_LIMIT = 65536,
 
     .MAP_HW = 16000.f,

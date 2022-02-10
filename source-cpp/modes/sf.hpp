@@ -13,6 +13,7 @@ constexpr BotAI sf_ai {
 };
 
 constexpr OPT sf_opt {
+    .MODE = "selffeed",
     .CELL_LIMIT = 65536,
 
     .MAP_HW = 32000.f,

@@ -14,6 +14,7 @@ constexpr BotAI omega_ai {
 };
 
 constexpr OPT omega_opt {
+    .MODE = "omega",
     .CELL_LIMIT = 131072,
 
     .MAP_HW = 40000.f,

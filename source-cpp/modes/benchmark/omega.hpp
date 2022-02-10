@@ -3,6 +3,7 @@
 #include "../omega.hpp"
 
 constexpr OPT omega_bench_opt {
+    .MODE = "bench-omega",
     .CELL_LIMIT = 131072,
 
     .MAP_HW = 64000.f,

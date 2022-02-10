@@ -8,6 +8,7 @@ constexpr BotAI mega_ai {
 };
 
 constexpr OPT mega_opt {
+    .MODE = "mega",
     .CELL_LIMIT = 131072,
 
     .MAP_HW = 25000.f,
