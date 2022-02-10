@@ -41,7 +41,7 @@ export class Player extends BasePlayer {
         Client.instance.skinStore.remove(this.skinTex.key);
     }
 
-    update(name: string, skin: string, color: string) {
+    update(name: string, skin: string, color = '#FFFFFF') {
         name = Client.instance.filterLongString(name);
 
         if (this.color !== color || this.name != name) {
