@@ -1,19 +1,10 @@
-.playerList {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+.server_panel {
+    color: white;
     padding: 10px;
-    max-height: 330px;
-    overflow-y: scroll;
 }
 
-.iconHolder {
-    width: 20%;
+.server_panel button {
+    margin: 5px;
     padding: 8px;
-}
-
-.playerIcon {
-    border-radius: 50%;
-    width: 100%;
-    height: 100%;
+    font-size: 14px;
 }
