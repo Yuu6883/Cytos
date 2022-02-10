@@ -6,6 +6,7 @@ import { useState } from '@hookstate/core';
 import { SaveInputs, InputStore, defaultSkin } from '../../../../../stores/inputs';
 import { CurrServer } from '../../../../../stores/servers';
 import { HUDStore } from '../../../../../stores/hud';
+import { useEffect } from 'react';
 
 interface Props {
     setIndex: (index: number) => void;
@@ -14,10 +15,19 @@ interface Props {
 export const Home = ({ setIndex }: Props) => {
     const connected = useState(CurrServer.connected);
     const inputs = useState(InputStore);
+
+    const name = inputs.name;
     const skin1 = inputs.skin1;
     const skin2 = inputs.skin2;
 
     const c = Client.instance;
+
+    useEffect(() => {
+        if (!c) return;
+        c.myPlayerData[0]?.update(name.value, skin1.value);
+        c.myPlayerData[1]?.update(name.value, skin2.value);
+    }, [name.value, skin1.value, skin2.value]);
+
     return (
         <>
             <div onMouseEnter={() => ReactToolTip.rebuild()} className={Style.preview}>
@@ -46,8 +56,8 @@ export const Home = ({ setIndex }: Props) => {
                     key="enabled-input"
                     type="text"
                     placeholder="Name"
-                    defaultValue={InputStore.name.value}
-                    onChange={e => InputStore.name.set(e.target.value)}
+                    defaultValue={name.value}
+                    onChange={e => name.set(e.target.value)}
                     onBlur={SaveInputs}
                     spellCheck={false}
                     maxLength={16}
