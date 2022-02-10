@@ -1,0 +1,56 @@
+.list {
+    max-height: 470px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+.item {
+    color: #fff;
+    font-size: 16px;
+    text-transform: uppercase;
+    border-bottom: 3px solid #010c19;
+    padding: 10px;
+}
+
+.item:hover {
+    background: #162536;
+}
+
+.item > input {
+    width: 80px;
+    color: #fff;
+    background: #ac2a3d;
+    border: 0;
+    font-size: 18px;
+    text-align: center;
+    text-transform: uppercase;
+    margin-right: 10px;
+    float: right;
+    vertical-align: middle;
+}
+
+.item > input:focus {
+    background: #fff;
+    color: #ac2a3d;
+}
+
+.mouse {
+    min-width: 80px;
+    text-align: center;
+    margin-right: 10px;
+    float: right;
+}
+
+.mouse b {
+    display: none;
+}
+
+.mouse .active {
+    display: inline-block;
+}
+
+:global(.fa-chevron-left),
+:global(.fa-chevron-right) {
+    cursor: pointer;
+    margin: 0 4px;
+}

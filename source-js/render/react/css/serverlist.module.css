@@ -1,0 +1,27 @@
+.serverlist {
+    max-height: 470px;
+    overflow-x: hidden;
+}
+
+.item {
+    color: #fff;
+    text-transform: uppercase;
+    font-size: 18px;
+    padding: 10px;
+    border-bottom: 3px solid #010c19;
+    cursor: pointer;
+}
+
+.item:hover {
+    background: #1d2f42;
+}
+
+.playerCount {
+    margin-left: auto;
+    float: right;
+}
+
+.offline:hover {
+    cursor: not-allowed;
+    background: none;
+}

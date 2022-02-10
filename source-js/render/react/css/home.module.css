@@ -1,0 +1,63 @@
+.preview {
+    position: relative;
+    padding: 10%;
+    text-align: center;
+    box-sizing: border-box;
+    aspect-ratio: 1;
+}
+
+.preview > img {
+    width: 100%;
+    height: 100%;
+    border-radius: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-sizing: border-box;
+    animation-iteration-count: infinite;
+    cursor: pointer;
+}
+
+.content {
+    padding: 10px;
+}
+
+.content > input {
+    width: 100%;
+    font-size: 18px;
+    color: #fff;
+    background-color: #010c19;
+    border: none;
+    border-radius: 2px;
+    padding: 10px;
+}
+
+.play {
+    width: 70%;
+    margin-top: 10px;
+}
+
+.spectate {
+    width: 28%;
+    float: right;
+    margin-top: 10px;
+}
+
+.secondarySkin {
+    position: absolute;
+    width: 140px !important;
+    height: 140px !important;
+    min-width: 140px !important;
+    min-height: 140px !important;
+    bottom: 5%;
+    right: 5%;
+    padding: 5;
+}
+
+.plusIcon {
+    position: absolute;
+    left: 18px;
+    bottom: 10px;
+    font-size: 26px;
+    padding: 5px;
+    color: #ac2a3d;
+    cursor: pointer;
+}

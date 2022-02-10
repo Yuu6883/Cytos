@@ -1,0 +1,28 @@
+.popupContainer {
+    position: relative;
+    display: flex;
+}
+
+.inviteButtons {
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+}
+
+.inviteButtons button {
+    margin-left: 5px;
+    font-size: 12px;
+    padding: 6px;
+}
+
+.inviteName {
+    max-width: 150px;
+    text-overflow: ellipsis;
+}
+
+.inviteIcon {
+    margin-right: 5px;
+    border-radius: 50%;
+    max-width: 64px;
+    max-height: 64px;
+}

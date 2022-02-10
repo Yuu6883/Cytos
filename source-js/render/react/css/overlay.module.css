@@ -1,0 +1,62 @@
+.overlay {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    margin: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.hud {
+    z-index: 1;
+    width: 0vw;
+    height: 0vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+}
+
+.container {
+    top: 47%;
+    left: 50%;
+    width: 100%;
+    transform: translate(-50%, -50%);
+    position: absolute;
+}
+
+.panels {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 525px;
+    max-height: 525px;
+}
+
+.ads300 {
+    width: 300px;
+    height: 600px;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.social {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.social i {
+    font-size: 25px;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.social i:hover {
+    color: white;
+}

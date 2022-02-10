@@ -1,0 +1,15 @@
+.panel {
+    background-color: #021421;
+    box-shadow: 0 0 4px 2px #000;
+    border-radius: 4px;
+    width: 40%;
+    max-width: 340px;
+    margin: 8px;
+}
+
+.adblock {
+    width: auto;
+    height: auto;
+    text-align: center;
+    padding: 20px;
+}

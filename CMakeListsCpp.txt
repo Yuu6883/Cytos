@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
+
+project (cytos CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+message(VERBOSE CXX)
+
+set(SRC_FILES
+    "src/misc/pool.cpp"
+    "src/game/control.cpp"
+    "src/game/handle.cpp"
+    "src/game/bot.cpp"
+    "src/addon/host.cpp"
+    "src/addon/player.cpp"
+    "src/addon/client.cpp"
+)
+
+if (WIN32)
+    add_executable(cytos ${SRC_FILES})
+    set_property(TARGET cytos PROPERTY CXX_STANDARD 20)
+
+    target_link_libraries(cytos libuv)
+endif()
+
+# TODO: linux

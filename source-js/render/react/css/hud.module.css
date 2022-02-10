@@ -1,0 +1,136 @@
+.stats {
+    color: white;
+    position: absolute;
+    width: auto;
+    top: 0px;
+    left: 0px;
+    z-index: 1;
+    padding: 10px;
+    margin: 4px;
+    background-color: rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.statsItem {
+    margin: 4px;
+    display: grid;
+    grid-template-columns: 40px auto;
+    column-gap: 10px;
+}
+
+.nerd {
+    color: white;
+    position: absolute;
+    width: 300px;
+    top: 0px;
+    right: 0px;
+    z-index: 1;
+    padding: 10px;
+    margin: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    font-size: 12px;
+
+    pointer-events: none;
+}
+
+.nerdItem {
+    margin: 4px;
+    display: grid;
+    grid-template-columns: 150px auto;
+    column-gap: 5px;
+}
+
+.nerdItem > *:last-child {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.ctxMenu {
+    position: fixed;
+    color: white;
+    z-index: 5;
+    padding: 0px;
+    background-color: #021421;
+    box-shadow: 0 0 4px 2px #000;
+    border-radius: 4px;
+    animation: fadeIn 0.5s;
+}
+
+.ctxImg {
+    max-width: 32px;
+    max-height: 32px;
+    border-radius: 50%;
+}
+
+.ctxTitle {
+    padding: 5px;
+}
+
+.ctxField {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.ctxField:hover {
+    background-color: #1d2f42;
+}
+
+.ctxOffline img {
+    filter: grayscale(100%);
+}
+
+.iconButton {
+    font-size: 25px;
+    color: #ac2a3d;
+    cursor: pointer;
+    padding: 6px;
+}
+
+.iconButton:hover {
+    color: #c42f45;
+}
+
+.partyLeave {
+    font-size: 22px;
+    float: right;
+    padding: 0px;
+}
+
+.selectPopup {
+    position: absolute;
+    font-size: 16px;
+    text-align: center;
+    background-color: rgba(14, 11, 23, 0.85);
+    width: fit-content;
+}
+
+.selectItem {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.selectItem:hover {
+    background-color: #162536d8;
+}
+
+.center {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.top {
+    left: 50%;
+    top: 0%;
+    transform: translate(-50%, -100%);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

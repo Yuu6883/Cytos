@@ -1,0 +1,9 @@
+out/*
+build/*
+linux-build/*
+.vscode/*
+.vs/*
+
+**/node_modules/*
+
+source-js/build/*

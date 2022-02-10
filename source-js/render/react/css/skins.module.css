@@ -1,0 +1,226 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    padding-top: 5px;
+    min-height: 440px;
+    overflow-y: scroll;
+    max-height: 55vh;
+}
+
+.container input {
+    margin-top: 5px;
+    width: 275px;
+    align-self: center;
+    font-size: 14px;
+    color: #fff;
+    background-color: #010c19;
+    border: none;
+    border-radius: 2px;
+    padding: 5px;
+    margin-left: 5px;
+    margin-right: 10px;
+    margin-top: 0px;
+}
+
+.container button {
+    font-size: 12px;
+    padding: 6px;
+    width: 40%;
+    margin-left: 10px;
+    margin-right: 5px;
+}
+
+.instr {
+    color: white;
+    font-size: 14px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.instr svg {
+    width: 10px;
+}
+
+.instr svg:nth-child(1) > path:nth-child(1) {
+    color: #c42f45;
+}
+
+.instr svg:nth-child(2) > path:nth-child(2) {
+    color: #c42f45;
+}
+
+.skins {
+    display: grid;
+    padding: 7px;
+    gap: 10px;
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.skin {
+    width: 95px;
+    height: 95px;
+    cursor: pointer;
+    position: relative;
+}
+
+.skin i {
+    opacity: 0;
+    transition: opacity 0.2s linear;
+}
+
+.skin:hover i {
+    opacity: 1;
+}
+
+.empty {
+    width: 95px;
+    height: 95px;
+    background-color: #162536;
+    border-radius: 50%;
+}
+
+.skin > i {
+    color: white;
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.skin > img {
+    width: 95px;
+    height: 95px;
+    min-width: 95px;
+    min-height: 95px;
+    border-radius: 100%;
+}
+
+.badge {
+    font-size: 13px;
+    width: 95px;
+    display: flex;
+    justify-content: center;
+    position: absolute;
+    color: white;
+    top: -2px;
+}
+
+.badge > span {
+    padding-top: 3px;
+    padding-bottom: 1px;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 5px;
+}
+
+.uploadPanel {
+    display: flex;
+    justify-content: center;
+}
+
+.panelColumn {
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.panelColumn:last-child {
+    min-width: 290px;
+    padding-left: 0px;
+}
+
+.panelColumn > div {
+    width: 100%;
+}
+
+.panelColumn input[type='color'] {
+    height: 20px;
+    outline: none;
+    float: right;
+}
+
+.panelColumn input[type='range'] {
+    margin: auto;
+    float: right;
+    width: 90px;
+}
+
+.previewStats {
+    color: #eee;
+    margin-top: 6px;
+    font-size: 12px;
+    display: inline-flex;
+    justify-content: space-around;
+}
+
+.skinPreview {
+    min-width: 310px;
+    min-height: 310px;
+    max-width: 33vw;
+    max-height: 33vh;
+    align-self: flex-end;
+}
+
+.rulePanel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: flex-start;
+    color: #eee;
+    height: 100%;
+}
+
+.rulePanel span {
+    margin-bottom: 3px;
+}
+
+.agreement {
+    margin-top: auto;
+    align-self: flex-end;
+    border: none;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    width: 100%;
+    padding: 0px;
+}
+
+.modalButtons {
+    margin-top: 15px;
+    align-self: flex-end;
+    display: inline-flex;
+    justify-content: flex-end;
+}
+
+.modalButtons button {
+    margin-left: 15px;
+    padding: 10px;
+    font-size: 14px;
+}
+
+.modalButtons[compact-buttons='true'] button {
+    padding: 8px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.modalButtons > button:first-child {
+    margin-left: 0px;
+}
+
+.modalButtons > div > button {
+    background-color: #d18400;
+}
+
+.modalButtons > div > button:hover {
+    background-color: #fca000;
+}
+
+.modalButtons > div > button:disabled {
+    background-color: #414141;
+}

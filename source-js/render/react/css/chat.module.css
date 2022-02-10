@@ -1,0 +1,228 @@
+.chatBox {
+    bottom: 0;
+    left: 0;
+    height: 30vh;
+    width: 30vh;
+    min-width: 400px;
+    min-height: 300px;
+    background-color: rgba(14, 11, 23, 0.5);
+    position: absolute;
+    z-index: 1;
+}
+
+.chatNav {
+    position: relative;
+    width: 100%;
+    padding: 5px;
+    color: #eee;
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: #16253699;
+    cursor: pointer;
+}
+
+.chatNav:hover {
+    background-color: #27384b99;
+}
+
+.chatNav i {
+    color: #eee;
+    cursor: pointer;
+}
+
+.chatNav i:hover {
+    color: #e53146;
+}
+
+.chatContainer {
+    overflow-y: scroll;
+    height: calc(100% - 33px);
+    padding: 6px;
+}
+
+.chatMessage {
+    color: white;
+    margin-bottom: 1px;
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.chatPrefix {
+    color: rgb(175, 175, 175);
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.chatPrefix[chat-type='PARTY'] {
+    color: deepskyblue;
+}
+
+.chatPrefix[chat-type='GUILD'] {
+    color: darkorange;
+}
+
+.chatPrefix[chat-type='DM'] {
+    color: violet;
+}
+
+.systemMsg {
+    color: rgb(175, 175, 175);
+    font-size: 16px;
+    font-weight: bold;
+    padding: 2px;
+}
+
+.chatMsgTime {
+    color: #494949;
+}
+
+.chatMsgText {
+    color: white;
+    user-select: text;
+}
+
+.chatInput {
+    display: none;
+    position: absolute;
+    bottom: 60px;
+    height: 40px;
+    left: 0;
+    right: 0;
+    margin: auto;
+    background-color: rgba(55, 55, 55, 0.5);
+    width: 33vw;
+    min-width: 600px;
+    z-index: 1;
+    border: 2px solid #ac2a3d;
+}
+
+.chatInput > input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    font-family: 'Armata';
+    font-size: 15px;
+    color: white;
+    padding: 0 10px;
+    padding-right: 31px;
+}
+
+.chatInput > div {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 200;
+    color: white;
+    background-color: #ac2a3d;
+    cursor: pointer;
+    padding: 6px;
+    max-width: 140px;
+    white-space: nowrap;
+}
+
+.chatInput > div:hover {
+    background-color: #e53146;
+}
+
+.toBottom {
+    font-size: 12px;
+    padding: 5px;
+    position: absolute;
+    bottom: 5px;
+    right: 12px;
+    background-color: #e53146;
+}
+
+.chatSuggestionsBar {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    bottom: 105px;
+    /* height: ; */
+    left: 0;
+    right: 0;
+    margin: auto;
+    width: 33vw;
+    min-width: 600px;
+    z-index: 1;
+    color: white;
+    max-height: 360px;
+    overflow-y: hidden;
+}
+
+.emoteRow {
+    display: flex;
+    height: 40px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.emoteRow > img {
+    max-width: 35px;
+    max-height: 35px;
+    padding: 3px;
+    margin-right: 5px;
+}
+
+.emote {
+    max-width: 25px;
+    max-height: 25px;
+}
+
+.laffIcon {
+    position: absolute;
+    top: -2px;
+    right: 10px;
+    bottom: 0;
+    height: 40px;
+    line-height: 40px !important;
+    color: #eee;
+    cursor: pointer;
+}
+
+.laffIcon[aria-disabled='false']:hover {
+    color: #fff;
+}
+
+.laffIcon[aria-disabled='true'] {
+    cursor: normal;
+    color: #666;
+}
+
+.emotesList {
+    flex-direction: row;
+    position: absolute;
+    bottom: 50px;
+    right: -12px;
+    margin: auto;
+    width: max-content;
+    max-width: 315px;
+    z-index: 1;
+    color: white;
+    max-height: 360px;
+    overflow-y: hidden;
+    flex-wrap: wrap;
+    padding: 0px;
+    background-color: rgba(55, 55, 55, 0.5);
+}
+
+.emotesList > img {
+    padding: 3px;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    object-fit: contain;
+}
+
+.emotesList > img:hover {
+    border: 2px solid #ac2a3d;
+}
