@@ -18,12 +18,14 @@ export const ServerStore = createState<{ data: ServerData[] }>({
 const DefaultServer = {
     connected: false,
     name: '',
+    mode: '',
     usage: 0,
 };
 
 export const CurrServer = createState<{
     connected: boolean;
     name: string;
+    mode: string;
     usage: number;
 }>({ ...DefaultServer });
 
