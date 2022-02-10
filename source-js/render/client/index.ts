@@ -5,9 +5,9 @@ import { vec3, mat4 } from 'gl-matrix';
 import { getResolution, Settings } from './settings/settings';
 import { Themes } from './settings/themes';
 import { HotkeyHandler } from './settings/hotkey-handler';
-import { HUDStore, IStats } from '../stores/hud';
+import { HUDStore, IStats, prettyBytes } from '../stores/hud';
 
-import { rgbToHsl, hexToRGB, hslToRgb } from './cell/colors';
+import { rgbToHsl, hexToRGB, hslToRgb, getMainColor } from './cell/colors';
 
 // URL's
 import VirusSrc from '../img/virus.webp';
@@ -45,6 +45,7 @@ import { Hotkeys } from './settings/keybinds';
 import { SYS } from './util/sys_message';
 import { GetInputs } from '../stores/inputs';
 import { CytosTimings, CytosVersion, CytosInputData } from '../types';
+import { CurrServer } from '../stores/servers';
 
 const MINIMAP_DIM = 1000;
 const CIRCLE_RADIUS = 512;
@@ -221,6 +222,8 @@ export default class Client {
 
     loaded = false;
     readonly canvas = document.createElement('canvas');
+    static readonly sampler = document.createElement('canvas');
+    static readonly samplerCtx = Client.sampler.getContext('2d');
 
     gl1: WebGLRenderingContext;
     gl2: WebGL2RenderingContext;
@@ -245,6 +248,7 @@ export default class Client {
     readonly screen = mat4.create();
 
     readonly playerData: Map<number, BasePlayer> = new Map();
+    readonly myPlayerData: [Player, Player] = [null, null];
 
     readonly settings = Settings;
     readonly hotkeys = Hotkeys;
@@ -362,6 +366,8 @@ export default class Client {
         this.canvas.id = 'game';
         document.body.appendChild(this.canvas);
 
+        Client.sampler.width = Client.sampler.height = COLOR_SAMPLE_SIZE;
+
         this.resize = this.resize.bind(this);
         window.addEventListener('resize', this.resize);
 
@@ -422,24 +428,24 @@ export default class Client {
             false,
         );
 
+        type WorkerData = {
+            mode?: string;
+            event?: string;
+            id?: string;
+            pid0?: number;
+            pid1?: number;
+            rock?: number;
+            timings?: CytosTimings;
+            version?: CytosVersion;
+            save?: string;
+            bytes?: number;
+            restore?: string;
+        };
+
         // Handle "server" message
         this.worker.addEventListener(
             'message',
-            (
-                e: MessageEvent<
-                    | Uint8Array
-                    | {
-                          mode?: string;
-                          event?: string;
-                          id?: string;
-                          pid0?: number;
-                          pid1?: number;
-                          rock?: number;
-                          timings?: CytosTimings;
-                          version?: CytosVersion;
-                      }
-                >,
-            ) => {
+            (e: MessageEvent<Uint8Array | WorkerData>) => {
                 const { data } = e;
 
                 if (data instanceof Uint8Array) {
@@ -461,7 +467,19 @@ export default class Client {
                         RenderModule.render(this, 1, dt, false);
                     }
                 } else if (typeof data === 'object') {
-                    const { mode, event, id, pid0, pid1, timings, version } = data;
+                    const {
+                        mode,
+                        event,
+                        id,
+                        pid0,
+                        pid1,
+                        timings,
+                        version,
+                        save,
+                        bytes,
+                        restore,
+                    } = data;
+
                     if (mode !== undefined) {
                         if (mode === null) this.clear(false);
                     }
@@ -469,18 +487,33 @@ export default class Client {
                         if (id === 'bot') {
                             this.playerData.set(pid0, new Bot(pid0));
                         } else if (id === 'player') {
+                            // Keep cache cuz it's gonna be overwritten anyways
+                            this.clear(true);
+
                             const [name, skin1, skin2] = GetInputs();
                             if (pid0) {
-                                this.playerData.set(
-                                    pid0,
-                                    new Player(pid0, name, skin1, '#FFFFFF'),
-                                );
+                                if (!this.myPlayerData[0])
+                                    this.playerData.set(
+                                        pid0,
+                                        (this.myPlayerData[0] = new Player(
+                                            pid0,
+                                            name,
+                                            skin1,
+                                            '#FFFFFF',
+                                        )),
+                                    );
                             }
                             if (pid1) {
-                                this.playerData.set(
-                                    pid1,
-                                    new Player(pid1, name, skin2, '#FFFFFF'),
-                                );
+                                if (!this.myPlayerData[1])
+                                    this.playerData.set(
+                                        pid1,
+                                        (this.myPlayerData[1] = new Player(
+                                            pid1,
+                                            name,
+                                            skin2,
+                                            '#FFFFFF',
+                                        )),
+                                    );
                             }
                         }
                     }
@@ -491,6 +524,9 @@ export default class Client {
                         HUDStore.nerdStats.uptime.set(Date.now() - version.timestamp);
                         HUDStore.nerdStats.compile.set(version.compile);
                     }
+                    if (save) SYS.msg(`Saved server: ${save} (${prettyBytes(bytes)})`);
+                    if (restore)
+                        SYS.msg(`Restored server: ${restore} (${prettyBytes(bytes)})`);
                 } else console.error(`Received unexpected data from worker: `, data);
             },
         );
@@ -517,8 +553,16 @@ export default class Client {
         }
     }
 
-    public connect(mode: string, isBenchmark = false) {
-        this.worker.postMessage({ mode, isBenchmark });
+    public connect(mode: string) {
+        this.worker.postMessage({ mode });
+    }
+
+    public save() {
+        this.worker.postMessage({ save: true });
+    }
+
+    public restore(restore = CurrServer.mode.value) {
+        if (restore) this.worker.postMessage({ restore });
     }
 
     public start() {
@@ -556,8 +600,6 @@ export default class Client {
 
         const dt = now - this.lastRAF;
         this.lastRAF = now;
-
-        console.log(now, performance.now());
 
         // Precompute value before passing into c++
         hexToRGB(this.themes.activeTabBorder.v, this.themeComputed.activeColor);
@@ -882,7 +924,6 @@ export default class Client {
         document.body.appendChild(this.vidElem);
 
         RenderModule.postInit(this);
-        console.log('postInit called');
     }
 
     private initTextureStores() {
@@ -1235,6 +1276,7 @@ export default class Client {
 
     clearCache() {
         this.playerData.clear();
+        this.myPlayerData.fill(null);
         this.skinStore.clear();
         this.nameStore.clear();
     }
@@ -1371,6 +1413,15 @@ export default class Client {
                 ctx.clip();
                 ctx.drawImage(skin, 6, 6, 1018, 1018);
                 ctx.restore();
+
+                const sampler = await createImageBitmap(skin, {
+                    resizeQuality: 'high',
+                    resizeWidth: skin.width / 4,
+                    resizeHeight: skin.height / 4,
+                });
+                const theme = Client.sampleColor(sampler, color);
+                sampler.close();
+                t.theme.set(theme);
 
                 return { success: true };
             },
@@ -1800,4 +1851,29 @@ export default class Client {
     //     gl.bufferSubData(gl.ARRAY_BUFFER, 0, buffer.subarray(0, i));
     //     gl.drawArrays(gl.TRIANGLES, 0, i / 9);
     // }
+
+    public static sampleColor(img: ImageBitmap | HTMLImageElement, color: string) {
+        const ctx = this.samplerCtx;
+        ctx.save();
+
+        ctx.clearRect(0, 0, COLOR_SAMPLE_SIZE, COLOR_SAMPLE_SIZE);
+        ctx.beginPath();
+        ctx.arc(
+            COLOR_SAMPLE_SIZE >>> 1,
+            COLOR_SAMPLE_SIZE >>> 1,
+            COLOR_SAMPLE_SIZE >>> 1,
+            0,
+            2 * Math.PI,
+        );
+        ctx.clip();
+
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.drawImage(img, 0, 0, COLOR_SAMPLE_SIZE, COLOR_SAMPLE_SIZE);
+        ctx.restore();
+
+        return getMainColor(
+            ctx.getImageData(0, 0, COLOR_SAMPLE_SIZE, COLOR_SAMPLE_SIZE).data,
+        ) as [number, number, number];
+    }
 }
