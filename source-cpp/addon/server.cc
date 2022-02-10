@@ -139,8 +139,6 @@ void Engine::infoEvent(GameHandle* handle, EventType event) {
 #undef set
 }
 
-#define CYTOS_IMPL(func) void CytosAddon::func(const FunctionCallbackInfo<Value>& args)
-
 CYTOS_IMPL(setThreads) {
     
     auto server = static_cast<Server*>(Local<External>::Cast(args.Data())->Value());
@@ -177,7 +175,7 @@ CYTOS_IMPL(setGameMode) {
         String::Utf8Value v8Str(iso, args[0]);
         mode = *v8Str;
     }
-
+    
     if (mode == "ffa") {
         engine = new FFAEngine(server);
     } else if (mode == "instant") {
@@ -198,7 +196,7 @@ CYTOS_IMPL(setGameMode) {
     } else if (mode == "debug") {
         engine = new DefaultEngine(server);
     } else {
-        printf("Unknown Game Mode: %s\n", mode.c_str());
+        logger::warn("Unknown Game Mode: %s\n", mode.c_str());
         // engine = new DefaultEngine(server);
         engine = nullptr;
     }
@@ -372,6 +370,9 @@ Server* CytosAddon::Main(Local<Object> exports) {
     exportFunc(iso, exports, serverCtx, "getVersion", CytosAddon::getVersion);
 
     exportFunc(iso, exports, serverCtx, "setInput", CytosAddon::setInput);
+
+    exportFunc(iso, exports, serverCtx, "save", CytosAddon::save);
+    exportFunc(iso, exports, serverCtx, "restore", CytosAddon::restore);
 
     return server;
 }
