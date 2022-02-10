@@ -124,6 +124,7 @@ struct Engine {
 
     void removeHandle(GameHandle* handle);
 
+    virtual const char* mode() { return "none"; }
     virtual const float getTimeScale() { return 0.f; };
     virtual const cell_cord_prec getMinView() { return 0.; };
     virtual const cell_cord_prec getViewScale() { return 0.; };
@@ -140,6 +141,7 @@ struct Engine {
     bool dualEnabled;
     bool defaultCanSpawn;
 
+    virtual void reset();
     virtual void tick(float dt);
 
     virtual void restart(bool clearMemory = true) {};
@@ -240,6 +242,7 @@ struct TemplateEngine : Engine {
     
     Cell& newCell();
 
+    const char* mode() { return T.MODE; };
     const float getTimeScale() { return T.TIME_SCALE; };
     const cell_cord_prec getMinView() { return T.PLAYER_VIEW_MIN; };
     const cell_cord_prec getViewScale() { return T.PLAYER_VIEW_SCALE; };
