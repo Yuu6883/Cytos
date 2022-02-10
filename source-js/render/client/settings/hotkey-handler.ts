@@ -256,6 +256,12 @@ export class HotkeyHandler {
             case Hotkeys.zoomOut.v:
                 c.mouse.scroll += 100;
                 break;
+            case Hotkeys.save.v:
+                c.save();
+                break;
+            case Hotkeys.restore.v:
+                c.restore();
+                break;
             case 'F1':
                 HUDStore.nerdVisible.set(!HUDStore.nerdVisible.value);
                 break;
