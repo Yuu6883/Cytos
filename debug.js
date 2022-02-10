@@ -2,6 +2,7 @@ const setting = (v = true) => ({ v });
 const tex = () => ({
     valid: true,
     uvs: new Float32Array([0, 0, 1, 1, 128, 128]),
+    theme: new Float32Array([1, 1, 1]),
 });
 const arr4 = [0, 0, 0, 0];
 
@@ -34,8 +35,10 @@ const client = {
     },
 
     themes: {
-        foodAnimation: true,
-        showBorder: true,
+        foodAnimation: { v: true },
+        showBorder: { v: true },
+        showInactiveTabBorder: { v: true },
+        autoTheme: { v: false },
     },
 
     themeComputed: {
@@ -89,3 +92,13 @@ Cytos.onInfo(({ event, id, pid0, pid1 }) => {
 });
 
 Cytos.setGameMode("bench-omega");
+
+setTimeout(() => {
+    const output = Cytos.save();
+    console.log(output);
+
+    setTimeout(() => {
+        const restored = Cytos.restore(output.mode, output.buffer);
+        console.log(restored);
+    }, 1000);
+}, 2000);
