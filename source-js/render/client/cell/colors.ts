@@ -63,3 +63,50 @@ export const hexToRGB = (hex: string, out = new Float32Array(3)) => {
     if (result) out.set(result.slice(1, 4).map(n => parseInt(n, 16) / 255));
     return out;
 };
+
+const HUE_BINS = 32;
+
+export const getMainColor = (arr: Uint8ClampedArray) => {
+    let i = 0;
+
+    let pickIndex = 0;
+    let hueMax = 0;
+    const hw = new Float32Array(HUE_BINS);
+    const ws = new Float32Array(HUE_BINS);
+    const sa = new Float32Array(HUE_BINS);
+    const li = new Float32Array(HUE_BINS);
+
+    while (i < arr.length) {
+        const [r, g, b, a] = arr.subarray(i, i + 4);
+        i += 4; // skip alpha
+        if (!a) continue;
+        const [h, s, l] = rgbToHsl(r, g, b);
+        if (l < 0.25 || l > 0.9) continue;
+        const hueIndex = Math.round(h * HUE_BINS);
+
+        const weight = s * (1 - Math.abs(l - 0.5));
+        for (let j = -2; j <= 2; j++) {
+            const w = weight - Math.abs(j) * 0.01;
+            const index = (j + hueIndex + HUE_BINS) % HUE_BINS;
+            const curr = (hw[index] += w);
+            if (curr > hueMax) {
+                pickIndex = index;
+                hueMax = curr;
+            }
+        }
+
+        ws[hueIndex] += weight;
+        sa[hueIndex] += weight * s;
+        li[hueIndex] += weight * l;
+    }
+
+    if (!hueMax) return [0.8, 0.8, 0.8];
+
+    const h = pickIndex / HUE_BINS;
+    let s = sa[pickIndex] / ws[pickIndex];
+    const l = li[pickIndex] / ws[pickIndex];
+
+    s += (1 - s) * 0.5;
+
+    return hslToRgb(h, s, l) as [number, number, number];
+};
