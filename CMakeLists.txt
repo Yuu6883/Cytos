@@ -12,6 +12,7 @@ set(ADDON_FILES
     "source-cpp/game/bot.cpp"
     "source-cpp/addon/server.cc"
     "source-cpp/addon/player.cc"
+    "source-cpp/addon/state.cc"
 )
 
 set(GFX_FILES
