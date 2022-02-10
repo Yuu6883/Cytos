@@ -22,6 +22,7 @@ struct PlayerData {
     uint8_t skinTexUnit;
     float nameTexUVsWH[6];
     float skinTexUVs[4];
+    Color skinTheme;
 };
 
 struct BitmapTextData {
@@ -313,7 +314,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
                 }
             }
 
-            auto skinTex = fieldTyped(playerObj, "nameTex", Object);
+            auto skinTex = fieldTyped(playerObj, "skinTex", Object);
             auto skinTexValid = field(skinTex, "valid")->BooleanValue(iso);
             if (skinTexValid) {
                 data.flags |= SKIN_VALID_BIT;
@@ -322,6 +323,10 @@ void render(const FunctionCallbackInfo<Value>& args) {
                 for (uint32_t i = 0; i < 4; i++) {
                     data.skinTexUVs[i] = indexFloat(skinTexUVs, i);
                 }
+                auto skinTheme = fieldTyped(skinTex, "theme", Float32Array);
+                data.skinTheme.r = indexFloat(skinTheme, 0);
+                data.skinTheme.g = indexFloat(skinTheme, 1);
+                data.skinTheme.b = indexFloat(skinTheme, 2);
             }
 
             data.skinState = intField(playerObj, "skinState");
@@ -416,8 +421,11 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
     auto themes = objField(clientObj, "themes");
 
-    auto cellBorder = !field(clientObj, "spectating")->BooleanValue(iso) && field(objField(themes, "showBorder"), "v")->BooleanValue(iso);
+    auto autoTheme = field(objField(themes, "autoTheme"), "v")->BooleanValue(iso);
+    auto showInactive = field(objField(themes, "showInactiveTabBorder"), "v")->BooleanValue(iso);
     auto animateFood = field(fieldTyped(themes, "foodAnimation", Object), "v")->BooleanValue(iso);
+
+    auto cellBorder = !field(clientObj, "spectating")->BooleanValue(iso) && field(objField(themes, "showBorder"), "v")->BooleanValue(iso);
 
     auto themeColors = objField(clientObj, "themeComputed");
 #define colorField(key) \
@@ -474,7 +482,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
     // Ascend, draw smaller cells first since we are not doing Z-test
     std::sort(rendering.begin(), rendering.end(), [](auto a, auto b) {
-        return a->cR < b->cR;
+        return a->cR <= b->cR;
     });
 
     clientObj->Set(ctx, String::NewFromUtf8Literal(iso, "rendercells"), Number::New(iso, rendering.size()));
@@ -501,7 +509,11 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
         if ((type & EJECT_BIT) || (type == PELLET_TYPE)) {
             auto r = rr * P;
-            writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), color, alpha, 1);
+            auto pid = type & PELLET_TYPE;
+            auto& p = state->players[pid];
+            if (autoTheme && (p.skinState == 1) && (p.flags & SKIN_VALID_BIT)) {
+                writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), p.skinTheme, alpha, 1);
+            } else writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), color, alpha, 1);
         } else if (type == DEAD_TYPE) {
             auto r = rr * P;
             writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), color, alpha * 0.5f, 1);
@@ -547,9 +559,14 @@ void render(const FunctionCallbackInfo<Value>& args) {
             // Draw border
             if (cellBorder) {
                 if (pid == activePID) {
-                    writeVertices(buffer, write_index, X0Y0X1Y1,
-                        UVs(RING), activeColor, alpha, 1);
-                } else if (pid == inactivePID) {
+                    if (renderSkin && (!(p.flags & BOT_BIT)) && (p.flags & SKIN_VALID_BIT) && p.skinState == 1) {
+                        writeVertices(buffer, write_index, X0Y0X1Y1,
+                            UVs(RING), autoTheme ? p.skinTheme : activeColor, alpha, 1);
+                    } else {
+                        writeVertices(buffer, write_index, X0Y0X1Y1,
+                            UVs(RING), autoTheme ? EJECTS_COLORS[pid % COLOR_COUNT] : activeColor, alpha, 1);
+                    }
+                } else if (showInactive && pid == inactivePID) {
                     writeVertices(buffer, write_index, X0Y0X1Y1,
                         UVs(RING), inactiveColor, alpha, 1);
                 }
