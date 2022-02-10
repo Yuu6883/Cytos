@@ -57,11 +57,20 @@ Engine::~Engine() {
 #else
         free(pool);
 #endif
+        pool = nullptr;
     }
 
-    for (auto bot : bots) delete bot;
-    for (auto [_, control] : controls) delete control;
+    reset();
 };
+
+void Engine::reset() {
+    for (auto bot : bots) delete bot;
+    bots.clear();
+    for (auto [_, control] : controls) delete control;
+    controls.clear();
+    handles.clear();
+    restart();
+}
 
 void Engine::addHandle(GameHandle* handle, uint16_t cid) {
     if (handle->control) return;
@@ -138,7 +147,7 @@ bool Engine::stop() {
 template<OPT const& T>
 void TemplateEngine<T>::restart(bool clearMemory) {
     
-    if (clearMemory) memset(pool, 0, poolSize());
+    if (pool && clearMemory) memset(pool, 0, poolSize());
 
     __start = __now;
     __next_cell_id = 0;
