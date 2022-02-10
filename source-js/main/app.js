@@ -84,6 +84,7 @@ class CytosMain {
         });
 
         this.mainWindow.on('ready-to-show', () => {
+            // this.mainWindow.removeMenu();
             this.mainWindow.webContents.setZoomFactor(1);
             this.mainWindow.show();
         });
