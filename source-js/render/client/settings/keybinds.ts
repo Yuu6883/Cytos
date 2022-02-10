@@ -25,7 +25,8 @@ const s = {
     toggleBorder: new S('toggleBorder', ''),
     zoomIn: new S('zoomIn', ''),
     zoomOut: new S('zoomOut', ''),
-    clip: new S('clip', 'R'),
+    save: new S('save', 'CTRL+S'),
+    restore: new S('restore', 'CTRL+R'),
     // minion
     macro_minion: new S('macro_minion', ''),
     split1_minion: new S('split1_minion', ''),
@@ -138,12 +139,15 @@ export const HotkeyCategory: { [key: string]: Setting<number | boolean | string>
         }),
     ],
     Misc: [
-        new Setting(s.clip, 5, {
-            text: 'Save Replay',
-        }),
         new Setting(s.respawn, 5, {
             text: 'Respawn',
             minion: s.respawn_minion,
+        }),
+        new Setting(s.save, 5, {
+            text: 'Save Game',
+        }),
+        new Setting(s.restore, 5, {
+            text: 'Restore Game',
         }),
         new Setting(s.zoomIn, 5, {
             text: 'Zoom In',
