@@ -52,7 +52,7 @@ module.exports = (_, argv) => ({
                 use: ['@svgr/webpack'],
             },
             {
-                test: /\.(ico|svg|png|jpg|gif|webp|wasm)$/i,
+                test: /\.(ico|svg|png|jpg|gif|webp)$/i,
                 use: [
                     {
                         loader: 'url-loader',
