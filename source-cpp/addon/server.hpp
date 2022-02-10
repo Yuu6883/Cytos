@@ -26,6 +26,7 @@ struct Server {
 };
 
 #define DECL_V8_EXPORT(func) void func(const FunctionCallbackInfo<Value>& args)
+#define CYTOS_IMPL(func) void CytosAddon::func(const FunctionCallbackInfo<Value>& args)
 
 namespace CytosAddon {
 
@@ -36,6 +37,9 @@ namespace CytosAddon {
     DECL_V8_EXPORT(setBufferCallback);
     DECL_V8_EXPORT(setInfoCallback);
     DECL_V8_EXPORT(getTimings);
+
+    DECL_V8_EXPORT(restore);
+    DECL_V8_EXPORT(save);
 
     // Export API
     Server* Main(Local<Object> exports);
