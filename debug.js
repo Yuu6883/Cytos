@@ -91,14 +91,17 @@ Cytos.onInfo(({ event, id, pid0, pid1 }) => {
     }
 });
 
-Cytos.setGameMode("bench-omega");
+Cytos.setGameMode("omega");
 
-setTimeout(() => {
-    const output = Cytos.save();
-    console.log(output);
+setInterval(() => Cytos.getTimings(), 1000);
 
-    setTimeout(() => {
-        const restored = Cytos.restore(output.mode, output.buffer);
-        console.log(restored);
-    }, 1000);
-}, 2000);
+// Test save & restore
+// setTimeout(() => {
+//     const output = Cytos.save();
+//     console.log(output);
+
+//     setTimeout(() => {
+//         const restored = Cytos.restore(output.mode, output.buffer);
+//         console.log(restored);
+//     }, 1000);
+// }, 2000);
