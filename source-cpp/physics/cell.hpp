@@ -37,21 +37,43 @@ constexpr uint16_t SKIP_RESOLVE_BITS = INSIDE_BIT | REMOVE_BIT | POP_BIT;
 
 typedef float cell_cord_prec;
 
-struct AABB {
-    cell_cord_prec l, r, b, t;
-    inline bool insersect(AABB& other) {
+template <typename T>
+struct TPoint {
+    T x, y;
+};
+
+template <typename T>
+struct TAABB {
+    T l, r, b, t;
+    
+    template <typename T2 = T>
+    inline bool insersect(TAABB<T2>& other) {
         return l < other.r && r > other.l &&
                t > other.b && b < other.t;
     }
-    inline bool contains(AABB& other) {
+
+    template <typename T2 = T>
+    inline bool contains(TAABB<T2>& other) {
         return l < other.l && r > other.r &&
                t > other.t && b < other.b;
     }
-    inline bool contains(cell_cord_prec x, cell_cord_prec y) {
+
+    template <typename T2 = T>
+    inline bool contains(T2 x, T2 y) {
         return l < x && r > x &&
                t > y && b < y;
     }
-    inline AABB operator||(AABB other) {
+
+    template <typename T2 = T>
+    TAABB<T>& operator=(const TAABB<T2>& other) {
+        this->l = (T) other.l;
+        this->r = (T) other.r;
+        this->b = (T) other.b;
+        this->t = (T) other.t;
+        return *this;
+    }
+
+    inline TAABB<T> operator||(TAABB<T> other) {
         return {
             .l = std::min(l, other.l),
             .r = std::max(r, other.r),
@@ -59,7 +81,7 @@ struct AABB {
             .t = std::max(t, other.t)
         };
     }
-    inline AABB operator&&(AABB other) {
+    inline TAABB<T> operator&&(TAABB<T> other) {
         return {
             .l = std::max(l, other.l),
             .r = std::min(r, other.r),
@@ -67,36 +89,40 @@ struct AABB {
             .t = std::min(t, other.t)
         };
     }
-    inline cell_cord_prec getX() { return (r + l) / 2.; }
-    inline cell_cord_prec getY() { return (t + b) / 2.; }
-    inline cell_cord_prec getArea() { return (r - l) * (t - b); }
+    inline T getArea() { return (r - l) * (t - b); }
 };
 
-struct Point {
-    cell_cord_prec x;
-    cell_cord_prec y;
+template <typename T>
+struct TRect : TPoint<T> {
+    T hw, hh;
+    TRect(T x, T y, T hw, T hh): 
+        hw(hw), hh(hh) {
+        this->x = x;
+        this->y = y;
+    };
+
+    template <typename T2 = T>
+    TAABB<T2> toAABB() { 
+        return { 
+            .l = this->x - hw,
+            .r = this->x + hw,
+            .b = this->y - hh,
+            .t = this->y + hh,
+        };
+    }
+
+    template <typename T2 = T>
+    TRect<T2> operator*(T2 expand) {
+        return TRect<T2>(this->x, this->y, hw * expand, hh * expand);
+    }
 };
+
+typedef TPoint<cell_cord_prec> Point;
+typedef TRect<cell_cord_prec> Rect;
+typedef TAABB<cell_cord_prec> AABB;
 
 struct BoolPoint : Point {
     bool safe;
-};
-
-struct Rect : Point {
-    cell_cord_prec hw, hh;
-    Rect(cell_cord_prec x, cell_cord_prec y, cell_cord_prec hw, cell_cord_prec hh):
-        hw(hw), hh(hh) {
-            this->x = x;
-            this->y = y;
-        };
-
-    AABB toAABB() { 
-        return { 
-            .l = x - hw,
-            .r = x + hw,
-            .b = y - hh,
-            .t = y + hh,
-        };
-    }
 };
 
 struct GridRange {
@@ -132,6 +158,9 @@ struct Boost {
 
 typedef uint32_t cell_id_t;
 
+typedef TRect<int32_t> IRect;
+typedef TAABB<int32_t> IAABB;
+
 struct alignas(64) Cell {
 // struct alignas(128) Cell {
     void* __root = nullptr; // 8
@@ -142,18 +171,18 @@ struct alignas(64) Cell {
     cell_cord_prec r; // 4
     float age; // 4
     union {
-        AABB aabb;
+        IAABB aabb;
         GridRange range;
     } shared; // 16
     Boost boost; // 12
     cell_id_t eatenByID; // 4
 
-    AABB toAABB() { 
+    IAABB toAABB() { 
         return { 
-            .l = x - r,
-            .r = x + r,
-            .b = y - r,
-            .t = y + r,
+            .l = int32_t(x - r),
+            .r = int32_t(x + r),
+            .b = int32_t(y - r),
+            .t = int32_t(y + r),
         };
     }
 

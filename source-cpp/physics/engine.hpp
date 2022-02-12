@@ -51,26 +51,45 @@ struct SpawnInfluence {
     }
 };
 
+constexpr uint32_t QUERY_LEVEL = 10;
+
+static inline thread_local std::mt19937 generator;
+
 struct Engine {
 
     struct {
-        float spawn_cells = 0.f;
-        float handle_io = 0.f;
-        float spawn_handles = 0.f;
-        float update_cells = 0.f;
-        float resolve_physics = 0.f;
+        float spawn_cells;
+        float handle_io;
+        float spawn_handles;
+        float update_cells;
+        float resolve_physics;
 
         struct {
-            float phase0 = 0.f;
-            float phase1 = 0.f;
-            float phase2 = 0.f;
-            float phase3 = 0.f;
-            float phase4 = 0.f;
-            float phase5 = 0.f;
-            float phase6 = 0.f;
-            float phase7 = 0.f;
+            float phase0;
+            float phase1;
+            float phase2;
+        } io;
+
+        struct {
+            float phase0;
+            float phase1;
+            float phase2;
+            float phase3;
+            float phase4;
+            float phase5;
+            float phase6;
+            float phase7;
         } physics;
     } timings;
+
+    struct {
+        uint64_t level_counter[QUERY_LEVEL];
+        uint64_t level_efficient[QUERY_LEVEL];
+        uint64_t phase0_total;
+        uint64_t phase0_effi;
+        uint64_t phase1_total;
+        uint64_t phase1_effi;
+    } queries;
 
     Server* server;
 
@@ -94,8 +113,9 @@ struct Engine {
     bool shouldRestart = false;
 
     Cell* pool;
-    uint32_t __next_cell_id;
+    LooseQuadTree<0.25f>* tree;
 
+    atomic<uint32_t> __next_cell_id;
     atomic<uint32_t> cellCount;
 
     // All kinds of cells
@@ -172,8 +192,7 @@ struct Engine {
 
     virtual void syncState() {};
     virtual void setExtState(string_view buf) {};
-    
-    std::mt19937 generator;
+
     mutex m;
     uint16_t id;
 
@@ -215,19 +234,26 @@ struct Engine {
 
     virtual void queryGridPL(AABB& aabb, const std::function<void(Cell*)> func) {};
     virtual void queryGridEV(AABB& aabb, const std::function<void(Cell*)> func) {};
-    virtual void queryTree(AABB& aabb, const std::function<void(Cell*)> func) {};
+
+    template <typename QueryFunc>
+    inline void queryTree(AABB& aabb, const QueryFunc& func) {
+        tree->query(aabb, func);
+    };
+
+    inline void countTreeItems(uint32_t* out, uint32_t count) {
+        tree->countItems(out, count); 
+    };
 };
 
 template<OPT const& T>
 struct TemplateEngine : Engine {
 
-    std::uniform_real_distribution<cell_cord_prec>randomEject;
-    std::uniform_real_distribution<cell_cord_prec>randomAngle;
-
-    cell_cord_prec rngAngle() { return randomAngle(generator); }
+    cell_cord_prec rngAngle() { 
+        std::uniform_real_distribution<cell_cord_prec> randomAngle(0, 2 * M_PI);
+        return randomAngle(generator); 
+    }
 
     // Templated data structures
-    QuadTree tree;
     Grid<T.GRID_PL_SIZE> Grid_PL;
     Grid<T.GRID_EV_SIZE> Grid_EV;
 
@@ -292,7 +318,7 @@ struct TemplateEngine : Engine {
     inline BoolPoint getSafeSpawnPoint(cell_cord_prec size, cell_cord_prec safeSize);
     inline BoolPoint getSafeSpawnFromInflu(cell_cord_prec size, cell_cord_prec safeSize);
 
-    Cell& splitFromCell(Cell& cell, cell_cord_prec size, Boost boost);
+    Cell* splitFromCell(Cell* cell, cell_cord_prec size, Boost boost);
     bool boostCell(Cell& cell, float& dt);
     void bounceCell(Cell& cell);
     void movePlayerCell(Cell& cell, float& dt, cell_cord_prec& mouseX, cell_cord_prec& mouseY, 
@@ -300,18 +326,14 @@ struct TemplateEngine : Engine {
 
     virtual void syncState();
 
-    virtual void queryGridPL(AABB& aabb, const std::function<void(Cell*)> func) {
+    virtual void queryGridPL(AABB& aabb, const std::function<void(Cell*)> func) override {
         bool escape = false;
         Grid_PL.query(aabb, func, escape);
     }
 
-    virtual void queryGridEV(AABB& aabb, const std::function<void(Cell*)> func) {
+    virtual void queryGridEV(AABB& aabb, const std::function<void(Cell*)> func) override {
         bool escape = false;
         Grid_EV.query(aabb, func, escape);
-    }
-
-    virtual void queryTree(AABB& aabb, const std::function<void(Cell*)> func) {
-        tree.query(aabb, func);
     }
 
     void gc() {

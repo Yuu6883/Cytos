@@ -82,10 +82,10 @@ void Control::calculateViewport() {
         const cell_cord_prec sqr = cell->r * cell->r;
         x += cell->x * sqr;
         y += cell->y * sqr;
-        aabb.l = std::min(aabb.l, cell->shared.aabb.l);
-        aabb.r = std::max(aabb.r, cell->shared.aabb.r);
-        aabb.b = std::min(aabb.b, cell->shared.aabb.b);
-        aabb.t = std::max(aabb.t, cell->shared.aabb.t);
+        aabb.l = std::min(aabb.l, cell_cord_prec(cell->shared.aabb.l));
+        aabb.r = std::max(aabb.r, cell_cord_prec(cell->shared.aabb.r));
+        aabb.b = std::min(aabb.b, cell_cord_prec(cell->shared.aabb.b));
+        aabb.t = std::max(aabb.t, cell_cord_prec(cell->shared.aabb.t));
         score += sqr * 0.01;
         size += sqr;
     }

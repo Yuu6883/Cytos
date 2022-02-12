@@ -39,6 +39,7 @@ struct RockEngine : TemplateEngine<T> {
     void spawnBots();
     bool spawnBotControl(Control*& c);
     bool spawnPlayerControl(Control*& c);
+    // TODO fix this?
     void queryTree(AABB& aabb, const std::function<void(Cell*)> func);
     void postResolve();
     void syncState();

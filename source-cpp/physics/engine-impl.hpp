@@ -21,7 +21,10 @@ Engine::Engine(Server* server, uint16_t id):
     running(false),
     usage(0.0f),
     __next_cell_id(1),
-    cellCount(0)
+    cellCount(0),
+    timings({}),
+    queries({}),
+    tree(nullptr)
 {
 };
 
@@ -30,11 +33,13 @@ Engine::Engine(Server* server, uint16_t id):
 template<OPT const& T>
 TemplateEngine<T>::TemplateEngine(Server* server, uint16_t id) : Engine(server, id),
     Grid_PL(Rect(0, 0, DIM, DIM)),
-    Grid_EV(Rect(0, 0, DIM, DIM)),
-    tree(Rect(0, 0, DIM, DIM), T.QUADTREE_MAX_LEVEL, T.QUADTREE_MAX_ITEMS),
-    randomAngle(0, 2 * M_PI), 
-    randomEject(-T.EJECT_DISPERSION, T.EJECT_DISPERSION)
+    Grid_EV(Rect(0, 0, DIM, DIM))
 {
+    auto bound = std::max(T.MAP_HW, T.MAP_HH);
+    int32_t dim = 1;
+    while (dim < bound) dim = dim << 1;
+    
+    this->tree = new LooseQuadTree<0.25f>(IRect(0, 0, dim, dim), T.QUADTREE_MAX_LEVEL, T.QUADTREE_MAX_ITEMS);
     this->dualEnabled = T.DUAL_ENABLED;
     this->defaultCanSpawn = T.PLAYER_CAN_SPAWN;
     this->desiredBots = T.BOTS;
@@ -59,6 +64,8 @@ Engine::~Engine() {
 #endif
         pool = nullptr;
     }
+
+    if (tree) delete tree;
 
     reset();
 };
@@ -153,7 +160,7 @@ void TemplateEngine<T>::restart(bool clearMemory) {
     __next_cell_id = 0;
     cellCount = 0;
     
-    tree.clear();
+    tree->clear();
     Grid_EV.clear();
     Grid_PL.clear();
     deadCells.clear();
@@ -200,14 +207,14 @@ void TemplateEngine<T>::kill(Control* control, bool replace) {
             n.shared.aabb = c->shared.aabb;
             n.boost = c->boost;
             n.type = DEAD_TYPE;
-            tree.swap(c, &n);
+            tree->swap(c, &n);
             memset(c, 0, sizeof(Cell));
             deadCells.push_back(&n);
             cellCount--; // Correct the cell count
         }
     } else {
         for (auto c : control->cells) {
-            tree.remove(c);
+            tree->remove(c);
             memset(c, 0, sizeof(Cell));
         }
         cellCount -= control->cells.size();
@@ -335,7 +342,7 @@ void TemplateEngine<T>::spawnEXP() {
         cell.boost = { 0.f, 0.f, 0.f };
         cell.updateAABB();
 
-        tree.insert(&cell);
+        tree->insert(&cell);
         exps.push_back(&cell);
     }
 }
@@ -356,7 +363,7 @@ void TemplateEngine<T>::spawnCYT() {
         cell.boost = { 0.f, 0.f, 0.f };
         cell.updateAABB();
 
-        tree.insert(&cell);
+        tree->insert(&cell);
         cyts.push_back(&cell);
     }
 }
@@ -374,7 +381,7 @@ bool TemplateEngine<T>::spawnBotControl(Control*& c) {
         cell.boost = { 0.f, 0.f, 0.f };
         cell.updateAABB();
 
-        tree.insert(&cell);
+        tree->insert(&cell);
         c->cells.push_back(&cell);
 
         // Making sure both if both tab try to spawn they spawn together
@@ -406,7 +413,7 @@ bool TemplateEngine<T>::spawnPlayerControl(Control*& c) {
         cell.boost = { 0.f, 0.f, 0.f };
         cell.updateAABB();
 
-        tree.insert(&cell);
+        tree->insert(&cell);
         c->cells.push_back(&cell);
 
         // Making sure both if both tab try to spawn they spawn together
@@ -456,11 +463,15 @@ void TemplateEngine<T>::handleIO(float dt) {
 
     for (auto& h : handles) h->syncInput();
 
-    std::uniform_int_distribution<int> rngBool(0, 1);
+    static std::uniform_int_distribution<int> rngBool(0, 1);
+
+    uint64_t t0 = uv_hrtime(), t1, t2, t3;
 
     aliveControls.clear();
-    for (auto [id, c] : copy) {
+    vector<Control*> queue;
+    queue.reserve(controls.size());
 
+    for (auto [id, c] : copy) {
         if (c->handle && c->handle->cleanMe()) freeHandle(c->handle);
 
         if (!c->cells.size() && !c->handle) {
@@ -475,8 +486,6 @@ void TemplateEngine<T>::handleIO(float dt) {
         }
 
         if (!c->handle) continue;
-        c->calculateViewport();
-
         if (c->score > restartMass) {
             // TODO: emit oversize
             if (T.WORLD_KILL_OVERSIZE) {
@@ -493,232 +502,238 @@ void TemplateEngine<T>::handleIO(float dt) {
         if (c->handle && !c->handle->isBot()) aliveControls.push_back(c);
 
         if (ignoreInput) continue;
-
-        cell_cord_prec minSplitSize = 0.f;
-        cell_cord_prec splitRadiusThresh = 0.f;
-        if constexpr (T.NORMALIZE_THRESH_MASS > 0.f) {
-            const cell_cord_prec multi = std::max(sqrt(c->score / T.NORMALIZE_THRESH_MASS), 1.);
-            minSplitSize = multi * T.PLAYER_MIN_SPLIT_SIZE;
-            splitRadiusThresh = sqrtf(T.NORMALIZE_THRESH_MASS * 100);
-        } else {
-            minSplitSize = T.PLAYER_MIN_SPLIT_SIZE;
-        }
-
-        constexpr cell_cord_prec boost = T.PLAYER_SPLIT_BOOST;
-
-        // Split
-        uint8_t expireTick = 11;
-        if (c->score > T.PLAYER_SPLIT_CAP_T1) expireTick = 9;
-        else if (c->score > T.PLAYER_SPLIT_CAP_T2) expireTick = 7;
-
-        auto maxCells = c->overwrites.cells;
-        if (maxCells <= 0) maxCells = T.PLAYER_MAX_CELLS;
-
-        uint8_t splits = c->splits;
-        c->splits = 0;
-        if (splits) c->splitAttempts.push_back(SplitAttempt(splits, 0));
-
-        for (auto& s : c->splitAttempts) {
-            s.attempt--;
-            s.tick++;
-
-            auto copy = c->cells;
-
-            for (auto cell : copy) {
-
-                if constexpr (T.ULTRA_MERGE) cell->age = 0;
-                if (c->cells.size() >= maxCells) break;
-                if (cell->r < minSplitSize) continue;
-                cell_cord_prec dx = c->__mouseX - cell->x;
-                cell_cord_prec dy = c->__mouseY - cell->y;
-                cell_cord_prec d = sqrt(dx * dx + dy * dy);
-                if (d < 1) dx = 1, dy = 0, d = 1;
-                else dx /= d, dy /= d;
-
-                if constexpr (T.NORMALIZE_THRESH_MASS > 0.) {
-                    const cell_cord_prec multi2 = std::max(cell->r / splitRadiusThresh, 1.);
-                    auto b = std::min(multi2 * boost, T.PLAYER_MAX_BOOST);
-                    auto& n = splitFromCell(*cell, cell->r * M_SQRT1_2, { dx, dy, b });
-                    c->cells.push_back(&n);
-                } else {
-                    if constexpr (T.EX_FAST_BOOST_R > 0.) {
-                        auto scaledBoost = cell->r > T.EX_FAST_BOOST_R ? (sqrtf(cell->r / T.EX_FAST_BOOST_R) * boost) : boost;
-                        auto& n = splitFromCell(*cell, cell->r * M_SQRT1_2, { dx, dy, scaledBoost });
-                        c->cells.push_back(&n);
-                    } else {
-                        auto& n = splitFromCell(*cell, cell->r * M_SQRT1_2, { dx, dy, boost });
-                        c->cells.push_back(&n);
-                    }
-                }
-            }
-
-            c->lastSplit = __now;
-        }
-
-        c->splitAttempts.erase(std::remove_if(c->splitAttempts.begin(), c->splitAttempts.end(), 
-            [&] (SplitAttempt& s) { return s.attempt <= 0 || s.tick >= expireTick; }), c->splitAttempts.end());
-
-        uint16_t ejectedCount = 0;
-        float maxEjectPerTick = dt / T.EJECT_DELAY;
-        // Eject
-        auto ejects = c->ejects;
-        c->ejects = 0;
-
-        auto macro = c->ejectMacro;
-        constexpr uint64_t noEjectPopDelayNano = T.PLAYER_NO_EJECT_POP_DEALY * MS_TO_NANO;
-
-        cell_cord_prec overwriteEjectMulti = c->overwrites.eject;
-        constexpr cell_cord_prec ejectLossSqr = T.EJECT_LOSS * T.EJECT_LOSS;
-        constexpr cell_cord_prec ejectSizeMin = T.PLAYER_MIN_EJECT_SIZE;
-        const cell_cord_prec ejectSize    = overwriteEjectMulti * T.EJECT_SIZE;
-        const cell_cord_prec ejectBoost   = c->overwrites.boost * T.EJECT_BOOST;
-
-        if (T.PLAYER_NO_EJECT_POP_DEALY > 0 && 
-            __now > c->lastPopped + noEjectPopDelayNano) {
-
-            while (c->lastEject <= __now + dt * MS_TO_NANO &&
-                (ejects > 0 || macro) && maxEjectPerTick--) {
-                    
-                if (ejects) ejects--;
-                ejectedCount++;
-
-                if (c->overwrites.cells == 1 && c->handle->perms & EJECT_PERKS) {
-
-                    bool isCYT = rngBool(generator) == 1;
-                    uint16_t etype = isCYT ? CYT_TYPE : EXP_TYPE;
-
-                    for (auto cell : c->cells) {
-                        const cell_cord_prec r = cell->r;
-                        if (r < ejectSizeMin || cell->age < T.PLAYER_NO_EJECT_DELAY) continue;
-                        
-                        cell_cord_prec dx = c->__mouseX - cell->x;
-                        cell_cord_prec dy = c->__mouseY - cell->y;
-                        cell_cord_prec d = sqrt(dx * dx + dy * dy);
-                        if (d < 1) dx = 1, dy = 0, d = 1;
-                        else dx /= d, dy /= d;
-
-                        const cell_cord_prec sx = cell->x + dx * r;
-                        const cell_cord_prec sy = cell->y + dy * r;
-                        
-                        if constexpr (T.EJECT_DISPERSION > 0.f) {
-                            const cell_cord_prec angle = atan2f(dx, dy) + randomEject(generator);
-                            dx = sinf(angle);
-                            dy = cosf(angle);
-                        }
-                        
-                        auto& n = newCell();
-
-                        n.x = sx;
-                        n.y = sy;
-                        n.r = ejectSize;
-                        n.type = etype;
-                        n.boost = { dx, dy, ejectBoost };
-                        n.age = 1;
-
-                        if (isCYT) {
-                            cyts.push_back(&n);
-                        } else {
-                            exps.push_back(&n);
-                        }
-
-                        tree.insert(&n);
-
-                        cell->r = sqrtf(r * r - ejectLossSqr);
-                        cell->flag |= UPDATE_BIT;
-                    }
-                } else {
-
-                    uint16_t etype = c->id | EJECT_BIT;
-                    for (auto cell : c->cells) {
-                        const cell_cord_prec r = cell->r;
-                        if (r < ejectSizeMin || cell->age < T.PLAYER_NO_EJECT_DELAY) continue;
-                        
-                        cell_cord_prec dx = c->__mouseX - cell->x;
-                        cell_cord_prec dy = c->__mouseY - cell->y;
-                        cell_cord_prec d = sqrt(dx * dx + dy * dy);
-                        if (d < 1) dx = 1, dy = 0, d = 1;
-                        else dx /= d, dy /= d;
-
-                        const cell_cord_prec sx = cell->x + dx * r;
-                        const cell_cord_prec sy = cell->y + dy * r;
-                        
-                        if constexpr (T.EJECT_DISPERSION > 0.f) {
-                            const cell_cord_prec angle = atan2f(dx, dy) + randomEject(generator);
-                            dx = sinf(angle);
-                            dy = cosf(angle);
-                        }
-                        
-                        auto& n = newCell();
-
-                        n.x = sx;
-                        n.y = sy;
-                        n.r = ejectSize;
-                        n.type = etype;
-                        n.boost = { dx, dy, ejectBoost };
-                        
-                        ejected.push_back(&n);
-                        Grid_EV.insert(n);
-
-                        cell->r = sqrtf(r * r - ejectLossSqr);
-                        cell->flag |= UPDATE_BIT;
-                    }
-                }
-
-                // WTF: floating point error makes solotrick actually OP but breaks after 7 days
-                uint64_t newT = __now + T.EJECT_DELAY * MS_TO_NANO * ejectedCount;
-                uint64_t oldT = __now + T.EJECT_DELAY * MS_TO_NANO_F * ejectedCount;
-
-                // if (newT != oldT) logger::debug("Diff: %i ms\n", ((long) newT - (long) oldT));
-                // c->lastEject = newT + jitter(generator);
-                c->lastEject = oldT;
-            }
-        }
-
-        // logger::debug("CHECKING PLAYER#%u\n", c->id);
-        // Spawn
-        if (c->canSpawn()) {
-            auto dt = ((__now - std::max(c->lastSpawned, c->lastDead)) / 1000 / 1000) / 1000.f;
-            if (dt > T.PLAYER_SPAWN_DELAY) delaySpawn(c);
-        }
+        queue.push_back(c);
     }
+
+    mutex work_m;
+    auto queue_size = queue.size();
     
-    tree.restructure();
+    // Player cells updates
+    for (uint32_t _ = 0; _ < server->threadPool->size(); _++) {
+        server->threadPool->enqueue([&] {
+            // Accumulate ejected cells locally
+            vector<Cell*> local_ejected;
+            // Estimate how much memory is needed
+            local_ejected.reserve(T.PLAYER_MAX_CELLS * queue_size / server->threadPool->size());
+
+            while (true) {
+                Control* c = nullptr;
+
+                {
+                    std::scoped_lock lock(work_m);
+
+                    if (!queue.size()) break;
+                    else {
+                        c = queue.back();
+                        queue.pop_back();
+                    }
+                }
+
+                c->calculateViewport();
+
+                cell_cord_prec minSplitSize = 0.f;
+                cell_cord_prec splitRadiusThresh = 0.f;
+                if constexpr (T.NORMALIZE_THRESH_MASS > 0.f) {
+                    const cell_cord_prec multi = std::max(sqrt(c->score / T.NORMALIZE_THRESH_MASS), 1.);
+                    minSplitSize = multi * T.PLAYER_MIN_SPLIT_SIZE;
+                    splitRadiusThresh = sqrtf(T.NORMALIZE_THRESH_MASS * 100);
+                } else {
+                    minSplitSize = T.PLAYER_MIN_SPLIT_SIZE;
+                }
+
+                constexpr cell_cord_prec boost = T.PLAYER_SPLIT_BOOST;
+
+                // Split
+                uint8_t expireTick = 11;
+                if (c->score > T.PLAYER_SPLIT_CAP_T1) expireTick = 9;
+                else if (c->score > T.PLAYER_SPLIT_CAP_T2) expireTick = 7;
+
+                auto maxCells = c->overwrites.cells;
+                if (maxCells <= 0) maxCells = T.PLAYER_MAX_CELLS;
+
+                uint8_t splits = c->splits;
+                c->splits = 0;
+                if (splits) c->splitAttempts.push_back(SplitAttempt(splits, 0));
+
+                // Split attempts
+                for (auto& s : c->splitAttempts) {
+                    s.attempt--;
+                    s.tick++;
+
+                    auto copy = c->cells;
+                    
+                    for (auto cell : copy) {
+
+                        if constexpr (T.ULTRA_MERGE) cell->age = 0;
+                        if (c->cells.size() >= maxCells) break;
+                        if (cell->r < minSplitSize) continue;
+                        cell_cord_prec dx = c->__mouseX - cell->x;
+                        cell_cord_prec dy = c->__mouseY - cell->y;
+                        cell_cord_prec d = sqrt(dx * dx + dy * dy);
+                        if (d < 1) dx = 1, dy = 0, d = 1;
+                        else dx /= d, dy /= d;
+                        
+                        if constexpr (T.NORMALIZE_THRESH_MASS > 0.) {
+                            const cell_cord_prec multi2 = std::max(cell->r / splitRadiusThresh, 1.);
+                            auto b = std::min(multi2 * boost, T.PLAYER_MAX_BOOST);
+                            auto n = splitFromCell(cell, cell->r * M_SQRT1_2, { dx, dy, b });
+                            c->cells.push_back(n);
+                        } else {
+                            if constexpr (T.EX_FAST_BOOST_R > 0.) {
+                                auto scaledBoost = cell->r > T.EX_FAST_BOOST_R ? (sqrtf(cell->r / T.EX_FAST_BOOST_R) * boost) : boost;
+                                auto n = splitFromCell(cell, cell->r * M_SQRT1_2, { dx, dy, scaledBoost });
+                                c->cells.push_back(n);
+                            } else {
+                                auto n = splitFromCell(cell, cell->r * M_SQRT1_2, { dx, dy, boost });
+                                c->cells.push_back(n);
+                            }
+                        }
+                    }
+
+                    c->lastSplit = __now;
+                }
+
+                c->splitAttempts.erase(std::remove_if(c->splitAttempts.begin(), c->splitAttempts.end(), 
+                    [&] (SplitAttempt& s) { return s.attempt <= 0 || s.tick >= expireTick; }), c->splitAttempts.end());
+
+                // continue;
+
+                uint16_t ejectedCount = 0;
+                float maxEjectPerTick = dt / T.EJECT_DELAY;
+                // Eject
+                auto ejects = c->ejects;
+                c->ejects = 0;
+
+                auto macro = c->ejectMacro;
+                constexpr uint64_t noEjectPopDelayNano = T.PLAYER_NO_EJECT_POP_DEALY * MS_TO_NANO;
+
+                cell_cord_prec overwriteEjectMulti = c->overwrites.eject;
+                constexpr cell_cord_prec ejectLossSqr = T.EJECT_LOSS * T.EJECT_LOSS;
+                constexpr cell_cord_prec ejectSizeMin = T.PLAYER_MIN_EJECT_SIZE;
+                const cell_cord_prec ejectSize    = overwriteEjectMulti * T.EJECT_SIZE;
+                const cell_cord_prec ejectBoost   = c->overwrites.boost * T.EJECT_BOOST;
+
+                // Eject
+                if (T.PLAYER_NO_EJECT_POP_DEALY > 0 &&
+                    __now > c->lastPopped + noEjectPopDelayNano) {
+
+                    while (c->lastEject <= __now + dt * MS_TO_NANO &&
+                        (ejects > 0 || macro) && maxEjectPerTick--) {
+                            
+                        if (ejects) ejects--;
+                        ejectedCount++;
+
+                        uint16_t etype = c->id | EJECT_BIT;
+                        for (auto cell : c->cells) {
+                            const cell_cord_prec r = cell->r;
+                            if (r < ejectSizeMin || cell->age < T.PLAYER_NO_EJECT_DELAY) continue;
+                            
+                            cell_cord_prec dx = c->__mouseX - cell->x;
+                            cell_cord_prec dy = c->__mouseY - cell->y;
+                            cell_cord_prec d = sqrt(dx * dx + dy * dy);
+                            if (d < 1) dx = 1, dy = 0, d = 1;
+                            else dx /= d, dy /= d;
+
+                            const cell_cord_prec sx = cell->x + dx * r;
+                            const cell_cord_prec sy = cell->y + dy * r;
+                            
+                            if constexpr (T.EJECT_DISPERSION > 0.f) {
+                                std::uniform_real_distribution<cell_cord_prec> randomEject(-T.EJECT_DISPERSION, T.EJECT_DISPERSION);
+                                const cell_cord_prec angle = atan2f(dx, dy) + randomEject(generator);
+                                dx = sinf(angle);
+                                dy = cosf(angle);
+                            }
+                            
+                            auto& n = newCell();
+
+                            n.x = sx;
+                            n.y = sy;
+                            n.r = ejectSize;
+                            n.type = etype;
+                            n.boost = { dx, dy, ejectBoost };
+                            
+                            local_ejected.push_back(&n);
+                            Grid_EV.insert(n);
+
+                            cell->r = sqrtf(r * r - ejectLossSqr);
+                            cell->flag |= UPDATE_BIT;
+                        }
+
+                        // WTF: floating point error makes solotrick actually OP but breaks after 7 days
+                        uint64_t newT = __now + T.EJECT_DELAY * MS_TO_NANO * ejectedCount;
+                        uint64_t oldT = __now + T.EJECT_DELAY * MS_TO_NANO_F * ejectedCount;
+
+                        // if (newT != oldT) logger::debug("Diff: %i ms\n", ((long) newT - (long) oldT));
+                        // c->lastEject = newT + jitter(generator);
+                        c->lastEject = oldT;
+                    }
+                }
+
+                std::scoped_lock lock(m);
+                // Spawn
+                if (c->canSpawn()) {
+                    auto dt = ((__now - std::max(c->lastSpawned, c->lastDead)) / 1000 / 1000) / 1000.f;
+                    if (dt > T.PLAYER_SPAWN_DELAY) delaySpawn(c);
+                }
+            }
+        
+            if (!local_ejected.size()) return;
+            // Append vector
+            std::scoped_lock lock(m);
+            ejected.insert(ejected.end(), local_ejected.begin(), local_ejected.end());
+        });
+    }
+    server->threadPool->sync();
+
+    timings.io.phase0 = time_func(t0, t1);;
+
+    tree->restructure();
     this->playerMass.store(playerMass);
     this->botMass.store(botMass);
+
+    timings.io.phase1 = time_func(t1, t2);;
 
     mutex qm;
 
     auto hcopy = handles;
+    vector<GameHandle*> seq;
+    seq.reserve(players.load());
 
-    hcopy.sort([](auto a, auto b) {
-        return a->viewArea < b->viewArea;
-    });
-
-    // Single thread because we might call into JS
-    for (auto& h : hcopy) {
-        h->onTick();
+    // Filter out player to be sequentially executed
+    auto iter = hcopy.begin();
+    while (iter != hcopy.end()) {
+        if (!(*iter)->isBot()) {
+            seq.push_back(*iter);
+            iter = hcopy.erase(iter);
+        } else iter++;
     }
 
-    // for (uint32_t i = 0; i < server->threadPool->size(); i++) {
-    //     server->threadPool->enqueue([&] {
-    //         while (true) {
-    //             GameHandle* h = nullptr;
-    //             qm.lock();
-    //             if (!hcopy.size()) {
-    //                 qm.unlock();
-    //                 break;
-    //             } else {
-    //                 h = hcopy.back();
-    //                 hcopy.pop_back();
-    //                 qm.unlock();
-    //             }
-    //             h->onTick();
-    //         }
-    //     });
-    // }
+    for (uint32_t i = 0; i < server->threadPool->size(); i++) {
+        // Basically all bots after we filter it
+        server->threadPool->enqueue([&] {
+            while (true) {
+                GameHandle* h = nullptr;
+                qm.lock();
+                if (!hcopy.size()) {
+                    qm.unlock();
+                    break;
+                } else {
+                    h = hcopy.back();
+                    hcopy.pop_back();
+                    qm.unlock();
+                }
+                h->onTick();
+            }
+        });
+    }
 
-    // server->threadPool->sync();
+    // Single thread because we might call into JS
+    for (auto& h : seq) h->onTick();
+    server->threadPool->sync();
+    
+    timings.io.phase2 = time_func(t2, t3);
 
+    // Minimap, not needed if we only have 1 player ):
     // constexpr uint32_t lbmm_repeat = 1000 / T.LBMM_TPS;
     // if (__now > __lbmm + (lbmm_repeat * MS_TO_NANO)) {
     //     __lbmm = __now;
@@ -787,7 +802,7 @@ void TemplateEngine<T>::updateCells(float dt) {
             bounceCell(*cell);
             cell->boost.d = T.EJECT_BOOST;
             cell->updateAABB();
-            tree.update(cell);
+            tree->update(cell);
         }
     }
 
@@ -796,7 +811,7 @@ void TemplateEngine<T>::updateCells(float dt) {
             bounceCell(*cell);
             cell->boost.d = T.EJECT_BOOST;
             cell->updateAABB();
-            tree.update(cell);
+            tree->update(cell);
         }
     }
 
@@ -846,7 +861,7 @@ void TemplateEngine<T>::updateCells(float dt) {
         if (boostCell(*cell, dt)) {
             bounceCell(*cell);
             cell->updateAABB();
-            tree.update(cell);
+            tree->update(cell);
         }
     }
 
@@ -876,13 +891,12 @@ void TemplateEngine<T>::updateCells(float dt) {
         }
         server->threadPool->sync();
     }
+
+    mutex work_m;
     vector<Control*> copy;
     
     copy.reserve(controls.size());
     for (auto [_, c] : controls) copy.push_back(c);
-
-    std::sort(copy.begin(), copy.end(), 
-        [](auto c1, auto c2) { return c1->cells.size() > c2->cells.size(); });
 
     constexpr cell_cord_prec dMass = 0.01f * T.DECAY_MIN * T.DECAY_MIN;
     constexpr cell_cord_prec localMulti = 0.00001f * T.LOCAL_DECAY;
@@ -891,16 +905,27 @@ void TemplateEngine<T>::updateCells(float dt) {
     const cell_cord_prec pMulti = localMulti * globalMulti;
 
     // Player cells updates
-    for (uint32_t i = 0; i < server->threadPool->size(); i++) {
+    for (uint32_t _ = 0; _ < server->threadPool->size(); _++) {
         if (ignoreInput) break;
 
-        server->threadPool->enqueue([&, i] {
-            for (uint32_t j = i; j < copy.size(); j += step) {
-                auto c = copy[j];
+        server->threadPool->enqueue([&] {
+
+            while (true) {
+                Control* c = nullptr;
+
+                {
+                    std::scoped_lock lock(work_m);
+                    if (!copy.size()) break;
+                    else {
+                        c = copy.back();
+                        copy.pop_back();
+                    }
+                }
 
                 if (!c->alive) continue;
                 cell_cord_prec decayMulti = (c->score - dMass) * pMulti;
-
+                
+                // Shrink viewport if camping detected
                 if constexpr (T.ANTI_CAMP_TIME > 0) {
                     constexpr cell_cord_prec camp = T.ANTI_CAMP_TIME * 1000 * MS_TO_NANO;
                     const cell_cord_prec nosplit = __now - c->lastSplit;
@@ -924,7 +949,7 @@ void TemplateEngine<T>::updateCells(float dt) {
                 if (c->overwrites.cells > 0 && c->cells.size() > c->overwrites.cells) {
                     for (int i = c->overwrites.cells; i < c->cells.size(); i++) {
                         auto cell = c->cells[i];
-                        tree.remove(cell);
+                        tree->remove(cell);
                         memset(cell, 0, sizeof(Cell));
                     }
                     cellCount -= (c->cells.size() - c->overwrites.cells);
@@ -964,10 +989,10 @@ void TemplateEngine<T>::updateCells(float dt) {
                     // Calculate autosplit
                     if constexpr (T.PLAYER_AUTOSPLIT_SIZE > 0) {
                         if (c->overwrites.canAuto && cell->r > T.PLAYER_AUTOSPLIT_SIZE) {
-                            cell_cord_prec angle = randomAngle(generator);
-                            auto& n = splitFromCell(*cell, cell->r * M_SQRT1_2, 
+                            cell_cord_prec angle = rngAngle();
+                            auto n = splitFromCell(cell, cell->r * M_SQRT1_2, 
                                 { sinf(angle), cosf(angle), T.PLAYER_SPLIT_BOOST });
-                            c->cells.push_back(&n);
+                            c->cells.push_back(n);
                         }
                     }
                     
@@ -1000,7 +1025,7 @@ void TemplateEngine<T>::updateCells(float dt) {
                     movePlayerCell(*cell, dt, mx, my, locked, allFlags, speed);
                 
                     cell->updateAABB();
-                    tree.update(cell);
+                    tree->update(cell);
                 }
 
                 // Unlock line if any cell hit wall with normal line
@@ -1013,7 +1038,7 @@ void TemplateEngine<T>::updateCells(float dt) {
     }
 
     server->threadPool->sync();
-    tree.restructure();
+    tree->restructure();
 }
 
 /** Super long function incoming */
@@ -1034,9 +1059,20 @@ void TemplateEngine<T>::resolve(float dt) {
     for (auto [_, c] : controls) if (c->cells.size()) temp.push_back(c);
     std::sort(temp.begin(), temp.end(), [](auto c1, auto c2) { return c1->score > c2->score; });
 
+    atomic<uint64_t> total_queries = 0;
+    atomic<uint64_t> effective_queries = 0;
+    memset(queries.level_counter, 0, sizeof(queries.level_counter));
+    memset(queries.level_efficient, 0, sizeof(queries.level_efficient));
+    mutex counter_m;
+
     vector<Control*> copy = temp;
-    for (uint32_t i = 0; i < server->threadPool->size(); i++) {
+    for (uint32_t _ = 0; _ < server->threadPool->size(); _++) {
         server->threadPool->enqueue([&] {
+            uint64_t effi = 0;
+            uint64_t total = 0;
+            uint64_t local_level_counter[QUERY_LEVEL] = {};
+            uint64_t local_level_efficient[QUERY_LEVEL] = {};
+
             while (true) {
                 Control* c = nullptr;
                 qm.lock();
@@ -1069,7 +1105,11 @@ void TemplateEngine<T>::resolve(float dt) {
                     // Skip resolve bits
                     if (flags & SKIP_RESOLVE_BITS) continue;
 
-                    tree.query(*cell, [&](Cell* other) {
+                    tree->query(*cell, true, [&](Cell* other, uint32_t level) {
+                        total++; // TODO: remove
+                        if (level < QUERY_LEVEL) local_level_counter[level]++;
+                        
+                        // This flag is only written to from the same thread, no need for atomic rw here
                         uint16_t otherFlags = other->flag;
 
                         if (otherFlags & SKIP_RESOLVE_BITS) return;
@@ -1105,6 +1145,9 @@ void TemplateEngine<T>::resolve(float dt) {
 
                         if (!dSqr || dSqr >= rSum * rSum) return;
                         cell_cord_prec d = sqrt(dSqr);
+
+                        effi++; // Indeed intersection
+                        if (level < QUERY_LEVEL) local_level_efficient[level]++;
 
                         if (action == Action::COL) {
                             cell_cord_prec m = rSum - d;
@@ -1165,14 +1208,29 @@ void TemplateEngine<T>::resolve(float dt) {
                     });
                 }
             }
+        
+            total_queries += total;
+            effective_queries += effi;
+
+            counter_m.lock();
+            for (int i = 0; i < QUERY_LEVEL; i++) {
+                queries.level_counter[i] += local_level_counter[i];
+                queries.level_efficient[i] += local_level_efficient[i];
+            }
+            counter_m.unlock();
         });
     }
     server->threadPool->sync();
     timings.physics.phase0 = time_func(t0, t1);
+    queries.phase0_total = total_queries.exchange(0);
+    queries.phase0_effi = effective_queries.exchange(0);
 
     copy = temp;
     for (uint32_t i = 0; i < server->threadPool->size(); i++) {
         server->threadPool->enqueue([&] {
+            uint64_t effi = 0;
+            uint64_t total = 0;
+
             while (true) {
                 Control* c = nullptr;
                 qm.lock();
@@ -1200,7 +1258,9 @@ void TemplateEngine<T>::resolve(float dt) {
                         // Skip resolve bits
                         if (cell->flag & SKIP_RESOLVE_BITS) continue;
 
-                        tree.query(*cell, [&](Cell* other) {
+                        tree->query(*cell, true, [&](Cell* other, uint32_t) {
+                            total++;
+
                             uint16_t otherFlags = other->flag.load(std::memory_order_relaxed);
 
                             if (otherFlags & SKIP_RESOLVE_BITS) return;
@@ -1220,6 +1280,8 @@ void TemplateEngine<T>::resolve(float dt) {
                             cell_cord_prec dSqr = dx * dx + dy * dy;
 
                             if (!dSqr || dSqr >= rSum * rSum) return;
+                            
+                            effi++; // Indeed intersection
                             cell_cord_prec d = sqrt(dSqr);
 
                             if (d >= cell->r - r2 / T.EAT_OVERLAP) return;
@@ -1250,7 +1312,9 @@ void TemplateEngine<T>::resolve(float dt) {
                         // Skip resolve bits
                         if (cell->flag & SKIP_RESOLVE_BITS) continue;
 
-                        tree.query(*cell, [&](Cell* other) {
+                        tree->query(*cell, true, [&](Cell* other, uint32_t) {
+                            total++;
+
                             uint16_t otherFlags = other->flag.load(std::memory_order_relaxed);
 
                             if (otherFlags & SKIP_RESOLVE_BITS) return;
@@ -1270,6 +1334,8 @@ void TemplateEngine<T>::resolve(float dt) {
                             cell_cord_prec dSqr = dx * dx + dy * dy;
 
                             if (!dSqr || dSqr >= rSum * rSum) return;
+                            
+                            effi++;
                             cell_cord_prec d = sqrt(dSqr);
 
                             if (d >= cell->r - r2 / T.EAT_OVERLAP) return;
@@ -1287,10 +1353,15 @@ void TemplateEngine<T>::resolve(float dt) {
                     }
                 }
             }
+        
+            total_queries += total;
+            effective_queries += effi;
         });
     }
     server->threadPool->sync();
     timings.physics.phase1 = time_func(t1, t2);
+    queries.phase1_total = total_queries.exchange(0);
+    queries.phase1_effi = effective_queries.exchange(0);
     
     // Dead cell collision resolve
     for (auto cell : deadCells) {
@@ -1310,9 +1381,7 @@ void TemplateEngine<T>::resolve(float dt) {
         cell_cord_prec r = cell->r;
         cell_cord_prec a = r * r;
 
-        // logger::debug("r = %.2f\n", cell->r);
-
-        tree.query(*cell, [&](Cell* other) {
+        tree->query(*cell, true, [&](Cell* other, uint32_t) {
             uint16_t otherFlags = other->flag;
 
             if (otherFlags & SKIP_RESOLVE_BITS) return;
@@ -1451,7 +1520,7 @@ void TemplateEngine<T>::resolve(float dt) {
 
     // Player-Pellets
     copy = temp;
-    for (uint32_t i = 0; i < server->threadPool->size(); i++) {
+    for (uint32_t _ = 0; _ < server->threadPool->size(); _++) {
         server->threadPool->enqueue([&] {
             while (true) {
                 Control* c = nullptr;
@@ -1501,48 +1570,65 @@ void TemplateEngine<T>::resolve(float dt) {
     server->threadPool->sync();
     timings.physics.phase4 = time_func(t4, t5);
 
-    // Post resolve
-    for (auto c : temp) {
-        for (auto cell : c->sorted) {
-            uint16_t f = cell->flag;
-            if (f & REMOVE_BIT) {
-                // tree.remove(cell);
-                cellCount--;
-                continue;
-            } else if (f & POP_BIT) {
-                const bool noPop = (c->handle && c->handle->perms & NO_POP) || c->overwrites.cells == 1;
-                auto maxCells = c->overwrites.cells;
-                if (maxCells <= 0)  maxCells = T.PLAYER_MAX_CELLS;
-                
-                if (!noPop) {
-                    distributeMass<T>(maxCells - c->cells.size(), cell->r * cell->r * 0.01f, [&] (cell_cord_prec mass) {
-                        cell_cord_prec angle = randomAngle(generator);
-                        auto& n = splitFromCell(*cell, sqrtf(mass * 100),
-                            { sinf(angle), cosf(angle), T.PLAYER_SPLIT_BOOST });
-                        c->cells.push_back(&n);
-                    });
-                    c->lastPopped = __now;
+    // Remove player cells & update
+    copy = temp;
+    for (uint32_t i = 0; i < server->threadPool->size(); i++) {
+        server->threadPool->enqueue([&] {
+            uint32_t removeCount = 0;
+            while (true) {
+                Control* c = nullptr;
+                qm.lock();
+                if (!copy.size()) {
+                    qm.unlock();
+                    break;
+                } else {
+                    c = copy.back();
+                    copy.pop_back();
+                    qm.unlock();
+                }
+                for (auto cell : c->sorted) {
+                    uint16_t f = cell->flag;
+                    if (f & REMOVE_BIT) {
+                        removeCount++;
+                        continue;
+                    } else if (f & POP_BIT) {
+                        const bool noPop = (c->handle && c->handle->perms & NO_POP) || c->overwrites.cells == 1;
+                        auto maxCells = c->overwrites.cells;
+                        if (maxCells <= 0)  maxCells = T.PLAYER_MAX_CELLS;
+                        
+                        if (!noPop) {
+                            distributeMass<T>(maxCells - c->cells.size(), cell->r * cell->r * 0.01f, [&] (cell_cord_prec mass) {
+                                cell_cord_prec angle = rngAngle();
+                                auto n = splitFromCell(cell, sqrtf(mass * 100),
+                                    { sinf(angle), cosf(angle), T.PLAYER_SPLIT_BOOST });
+                                c->cells.push_back(n);
+                            });
+                            c->lastPopped = __now;
+                        }
+                    }
+                    if (cell->flag & LOCK_BIT) {
+                        cell_cord_prec x0 = cell->x;
+                        cell_cord_prec y0 = cell->y;
+                        cell_cord_prec aL = c->linearEquation[0];
+                        cell_cord_prec bL = c->linearEquation[1];
+                        cell_cord_prec cL = c->linearEquation[2];
+                        cell->x = (bL * ( bL * x0 - aL * y0) - aL * cL) * c->abSqrSumInvL;
+                        cell->y = (aL * (-bL * x0 + aL * y0) - bL * cL) * c->abSqrSumInvL;
+                    }
+                    tree->update(cell);
                 }
             }
-            if (cell->flag & LOCK_BIT) {
-                cell_cord_prec x0 = cell->x;
-                cell_cord_prec y0 = cell->y;
-                cell_cord_prec aL = c->linearEquation[0];
-                cell_cord_prec bL = c->linearEquation[1];
-                cell_cord_prec cL = c->linearEquation[2];
-                cell->x = (bL * ( bL * x0 - aL * y0) - aL * cL) * c->abSqrSumInvL;
-                cell->y = (aL * (-bL * x0 + aL * y0) - bL * cL) * c->abSqrSumInvL;
-            }
-            tree.update(cell);
-        }
+            cellCount -= removeCount;
+        });
     }
+    server->threadPool->sync();
 
     for (auto& cell : deadCells) {
         if (cell->flag & REMOVE_BIT) {
-            // tree.remove(cell);
+            // tree->remove(cell);
             cellCount--;
         } else if (cell->flag & UPDATE_BIT) {
-            tree.update(cell);
+            tree->update(cell);
         }
     }
 
@@ -1671,7 +1757,7 @@ void TemplateEngine<T>::postResolve() {
                 (T.VIRUS_SIZE * T.VIRUS_SIZE);
 
             for (int i = 0; i < splitTimes; i++) {
-                auto angle = randomAngle(generator);
+                auto angle = rngAngle();
                 auto& n = newCell();
 
                 n.x = v->x;
@@ -1690,7 +1776,7 @@ void TemplateEngine<T>::postResolve() {
     }
 
     virusToSplit.clear();
-    tree.restructure();
+    tree->restructure();
 
     filterCells(exps, removedCells);
     filterCells(cyts, removedCells);
@@ -1887,7 +1973,7 @@ BoolPoint TemplateEngine<T>::getSafeSpawnPoint(cell_cord_prec size, cell_cord_pr
     while (--tries) {
         auto [x, y] = randomPoint(size);
         AABB aabb = Rect(x, y, safe, safe).toAABB();
-        if (tree.isSafe(aabb)) {
+        if (tree->isSafe(aabb)) {
             bool escape = false;
             uint32_t e = 0;
             Grid_EV.query(aabb, [&](Cell* other) {
@@ -1932,19 +2018,36 @@ BoolPoint TemplateEngine<T>::getSafeSpawnFromInflu(cell_cord_prec size, cell_cor
 template<OPT const& T>
 Cell& TemplateEngine<T>::newCell() {
     if (cellCount == T.CELL_LIMIT) {
-        shouldRestart = true;
-        return pool[0];
+        // shouldRestart = true;
+        // return pool[0];
+        abort();
     }
 
-    while (pool[__next_cell_id].flag & EXIST_BIT) {
-        __next_cell_id++;
-        if (__next_cell_id >= T.CELL_LIMIT) __next_cell_id = 0;
+    uint32_t id;
+
+    uint16_t none = 0;
+    uint16_t exist = 1;
+
+    while (true) {
+        id = __next_cell_id.load();
+        while (pool[id].flag.load() & EXIST_BIT) {
+            id++;
+            if (id >= T.CELL_LIMIT) id = 0;
+        }
+
+        if (pool[id].flag.compare_exchange_weak(none, exist, 
+            std::memory_order_release, std::memory_order_relaxed)) {
+            __next_cell_id.store(id);
+            break;
+        }
+
+        none = 0;
+        exist = 1;
     }
 
     cellCount++;
     
-    Cell& cell = pool[__next_cell_id];
-    cell.flag = EXIST_BIT;
+    Cell& cell = pool[id];
     cell.age = 0.f;
     cell.eatenByID = 0;
 
@@ -1952,25 +2055,25 @@ Cell& TemplateEngine<T>::newCell() {
 }
 
 template<OPT const& T>
-Cell& TemplateEngine<T>::splitFromCell(Cell& cell, cell_cord_prec size, Boost boost) {
-    cell.r = sqrtf(cell.r * cell.r - size * size);
-    cell.flag |= UPDATE_BIT;
+Cell* TemplateEngine<T>::splitFromCell(Cell* cell, cell_cord_prec size, Boost boost) {
+    cell->r = sqrtf(cell->r * cell->r - size * size);
+    cell->flag |= UPDATE_BIT;
 
-    const cell_cord_prec x = cell.x + T.PLAYER_SPLIT_DIST * boost.x;
-    const cell_cord_prec y = cell.y + T.PLAYER_SPLIT_DIST * boost.y;
+    const cell_cord_prec x = cell->x + T.PLAYER_SPLIT_DIST * boost.x;
+    const cell_cord_prec y = cell->y + T.PLAYER_SPLIT_DIST * boost.y;
 
     auto& n = newCell();
 
     n.x = x;
     n.y = y;
     n.r = size;
-    n.type = cell.type;
+    n.type = cell->type;
     n.boost = boost;
     n.updateAABB();
 
-    tree.insert(&n);
+    tree->insert(&n);
 
-    return n;
+    return &n;
 };
 
 template<OPT const& T>
@@ -1990,14 +2093,14 @@ void TemplateEngine<T>::syncState() {
 
         if (cell.type == CYT_TYPE) {
             cyts.push_back(&cell);
-            tree.insert(&cell);
+            tree->insert(&cell);
         } else if (cell.type == EXP_TYPE) {
             exps.push_back(&cell);
-            tree.insert(&cell);
+            tree->insert(&cell);
         } else if (cell.type == DEAD_TYPE) {
             deadCells.push_back(&cell);
             cell.updateAABB();
-            tree.insert(&cell);
+            tree->insert(&cell);
         } else if (cell.type == VIRUS_TYPE) {
             viruses.push_back(&cell);
             Grid_EV.insert(cell);
@@ -2016,7 +2119,7 @@ void TemplateEngine<T>::syncState() {
                 iter->second->cells.push_back(&cell);
             }
             cell.updateAABB();
-            tree.insert(&cell);
+            tree->insert(&cell);
         }
     }
 

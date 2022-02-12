@@ -52,6 +52,11 @@ struct SplitAttempt {
     SplitAttempt(uint8_t attempt, uint8_t tick) : attempt(attempt), tick(tick) {};
 };
 
+struct QueryPair {
+    Cell* cell;
+    Cell* other;
+};
+
 struct Control {
     uint16_t id;
     Engine* engine;

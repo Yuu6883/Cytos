@@ -29,5 +29,5 @@ private:
     unsigned int busy;
     std::atomic_uint processed;
     bool stop;
-    void thread_proc(int index);
+    void thread_proc(uint32_t index);
 };

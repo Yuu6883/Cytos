@@ -26,7 +26,8 @@ class Grid {
     vector<Cell*> buckets[Dim][Dim];
     mutex m[Dim][Dim];
 
-    GridRange fromAABB(AABB& box) {
+    template<typename T>
+    GridRange fromAABB(TAABB<T>& box) {
         GridRange rg;
 
         rg.l = std::max(int32_floor((box.l - aabb.l) / xBinSize), 0);
@@ -137,8 +138,8 @@ public:
         }
     }
 
-    template <typename QueryFunc>
-    inline void query(AABB& box, const QueryFunc& cb, bool& escape) {
+    template <typename T, typename QueryFunc>
+    inline void query(TAABB<T>& box, const QueryFunc& cb, bool& escape) {
         GridRange rg = fromAABB(box);
     
         for (int32_t i = rg.l; i <= rg.r; i++) {

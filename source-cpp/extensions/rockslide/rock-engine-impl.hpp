@@ -45,8 +45,8 @@ Bot* RockEngine<T>::addBot(uint16_t botID) {
 
     auto rock = bot->control;
     rock->overwrites.cells = 1;
-    rock->overwrites.speed = rockSpeedDist(this->generator);
-    rock->overwrites.minSize = rockSizeDist(this->generator);
+    rock->overwrites.speed = rockSpeedDist(generator);
+    rock->overwrites.minSize = rockSizeDist(generator);
     rock->overwrites.canAuto = false;
     rock->overwrites.canMerge = false;
     rock->overwrites.canColli = false;
@@ -66,17 +66,17 @@ void RockEngine<T>::spawnBots() {
 
 template<OPT const& T>
 bool RockEngine<T>::spawnBotControl(Control*& rock) {
-    auto left = rockAxisDist(this->generator);
+    auto left = rockAxisDist(generator);
 
     float x = (left ? -T.MAP_HW : T.MAP_HW);
-    float y = rockYDist(this->generator);
+    float y = rockYDist(generator);
 
     rock->__mouseX = -x;
-    rock->__mouseY = rockYDist(this->generator);
+    rock->__mouseY = rockYDist(generator);
     
     rock->overwrites.cells = 1;
-    rock->overwrites.speed = rockSpeedDist(this->generator);
-    rock->overwrites.minSize = rockSizeDist(this->generator);
+    rock->overwrites.speed = rockSpeedDist(generator);
+    rock->overwrites.minSize = rockSizeDist(generator);
 
     auto& cell = this->newCell();
     cell.x = x;
@@ -86,7 +86,7 @@ bool RockEngine<T>::spawnBotControl(Control*& rock) {
     cell.boost = { 0.f, 0.f, 0.f };
     cell.updateAABB();
 
-    this->tree.insert(&cell);
+    this->tree->insert(&cell);
     rock->cells.push_back(&cell);
 
     rock->viewport.x = x;
@@ -101,14 +101,14 @@ bool RockEngine<T>::spawnBotControl(Control*& rock) {
 template<OPT const& T>
 bool RockEngine<T>::spawnPlayerControl(Control*& c) {
     auto& cell = this->newCell();
-    cell.x = playerXDist(this->generator);
+    cell.x = playerXDist(generator);
     cell.y = T.MAP_HH * -0.9f;
     cell.r = 1000.f;
     cell.type = c->id;
     cell.boost = { 0.f, 0.f, 0.f };
     cell.updateAABB();
 
-    this->tree.insert(&cell);
+    this->tree->insert(&cell);
 
     c->cells.push_back(&cell);
     c->viewport.x = cell.x;
@@ -132,7 +132,7 @@ void RockEngine<T>::postResolve() {
     if (goal && goal->type == CYT_TYPE) {
         unordered_set<uint16_t> winnerTypes;
 
-        this->tree.query(*goal, [&](Cell* other) {
+        this->tree->query(*goal, true, [&](Cell* other, uint32_t) {
             float dx = other->x - goal->x;
             float dy = other->y - goal->y;
 

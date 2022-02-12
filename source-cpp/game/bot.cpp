@@ -45,7 +45,7 @@ void Bot::onTick() {
         } else {
             control->ejectMacro = false;
 
-            auto chance = actionPicker(engine->generator);
+            auto chance = actionPicker(generator);
             
             if (control->cells.size() < AI->BOT_SOLOTRICK_MAX_CELL && 
                 control->score < AI->BOT_SOLOTRICK_MASS && chance < AI->BOT_SOLOTRICK_CHANCE) {
@@ -60,7 +60,7 @@ void Bot::onTick() {
                 control->__mouseX = control->viewport.x + 5000 * sinf(angle);
                 control->__mouseY = control->viewport.y + 5000 * cosf(angle);
 
-                control->splits = splitsPicker(engine->generator);
+                control->splits = splitsPicker(generator);
                 setNextAction(AI->BOT_SPLIT_CD);
                 return;
             }

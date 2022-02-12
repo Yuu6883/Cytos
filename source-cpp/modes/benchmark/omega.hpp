@@ -63,7 +63,7 @@ constexpr OPT omega_bench_opt {
     .ANTI_CAMP_MASS = 50000.,
     .ANTI_CAMP_MULT = 0.07,
 
-    .BOTS = 500,
+    .BOTS = 1000,
     .BOT_SPAWN_SIZE = 750.f,
 
     .EJECT_SIZE = 40.f,

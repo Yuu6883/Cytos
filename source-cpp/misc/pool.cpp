@@ -4,16 +4,31 @@
 #ifdef WIN32
 #include <Windows.h>
 #else 
-// TODO
+// TODO: implement pthread cpu binding
 #include <pthread>
 #endif
 
-ThreadPool::ThreadPool(unsigned int n) : busy(0), processed(0), stop(0) {
-    if (!n) {
-        logger::error("Need at least 1 thread for thread pool to work\n");
-    } else if (n > 1) {
-        for (unsigned int i = 0; i < n; ++i)
-            workers.emplace_back(std::bind(&ThreadPool::thread_proc, this, i));
+ThreadPool::ThreadPool(uint32_t n) : busy(0), processed(0), stop(0) {
+    if (n <= 0) {
+        n = 1;
+        logger::warn("Setting thread pool worker to 1\n");
+    }
+
+    auto total_cpus = std::thread::hardware_concurrency();
+    auto ratio = total_cpus / n;
+
+    // TODO: learn how to use hwloc instead of this crap
+    
+    // step = 1: cpu 0,1,2,3...
+    // step = 2: cpu 0,2,4,6... (good for hyperthreaded processor?)
+    // step = 4: cpu 0,4,8,12... 
+    // etc
+
+    auto step = 1;
+    while ((step << 1) <= ratio) step = step << 1;
+
+    for (uint32_t i = 0; i < n; ++i) {
+        workers.emplace_back(std::bind(&ThreadPool::thread_proc, this, i * step));
     }
 }
 
@@ -29,9 +44,9 @@ ThreadPool::~ThreadPool() {
         t.join();
 }
 
-void ThreadPool::thread_proc(int index) {
+void ThreadPool::thread_proc(uint32_t cpu) {
 #ifdef WIN32
-    SetThreadAffinityMask(GetCurrentThread(), (1 << index));
+    SetThreadAffinityMask(GetCurrentThread(), (1 << cpu));
 #else
 // TODO
 #endif
