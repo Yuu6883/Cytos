@@ -245,7 +245,8 @@ CYTOS_IMPL(getTimings) {
 #define num(arg) Number::New(iso, arg)
 #define set(o, i, v) o->Set(ctx, i, v)
 
-    auto t = server->engine->timings;
+    auto& e = server->engine;
+    auto& t = e->timings;
 
     auto obj = Object::New(iso);
 
@@ -256,7 +257,25 @@ CYTOS_IMPL(getTimings) {
     set(obj, lit("resolve_physics"), num(t.resolve_physics));
 
     set(obj, lit("threads"),         num(server->threadPool->size()));
-    set(obj, lit("usage"),           num(server->engine->usage.load()));
+    set(obj, lit("usage"),           num(e->usage.load()));
+
+    uint32_t counters[QUERY_LEVEL];
+    e->countTreeItems(counters, QUERY_LEVEL);
+    auto tree = Array::New(iso, QUERY_LEVEL);
+
+    for (uint32_t i = 0; i < QUERY_LEVEL; i++) {
+        set(tree, i, num(counters[i]));
+    }
+
+    set(obj, lit("tree"), tree);
+
+    auto io = Array::New(iso, 3);
+    
+    set(io, 0, num(t.io.phase0));
+    set(io, 1, num(t.io.phase1));
+    set(io, 2, num(t.io.phase2));
+
+    set(obj, lit("io"), io);
 
     auto phy = Array::New(iso, 8);
     
@@ -270,6 +289,24 @@ CYTOS_IMPL(getTimings) {
     set(phy, 7, num(t.physics.phase7));
 
     set(obj, lit("physics"), phy);
+
+    auto queries = Array::New(iso, 4);
+    
+    set(queries, 0, num(e->queries.phase0_total));
+    set(queries, 1, num(e->queries.phase0_effi));
+    set(queries, 2, num(e->queries.phase1_total));
+    set(queries, 3, num(e->queries.phase1_effi));
+
+    set(obj, lit("queries"), queries);
+
+    auto counter = Array::New(iso, QUERY_LEVEL * 2);
+    
+    for (int i = 0; i < QUERY_LEVEL; i++) {
+        set(counter, 2 * i, num(e->queries.level_counter[i]));
+        set(counter, 2 * i + 1, num(e->queries.level_efficient[i]));
+    }
+
+    set(obj, lit("counter"), counter);
     
     args.GetReturnValue().Set(obj);
 
@@ -352,7 +389,8 @@ Server* CytosAddon::Main(Local<Object> exports) {
     server->isolate = iso;
     server->player = new Player(server);
 
-    uint32_t init_threads = std::max(1u, std::thread::hardware_concurrency());
+    // Above 8 threads scalabilty is bad
+    uint32_t init_threads = std::clamp(std::thread::hardware_concurrency(), 1u, 8u);
     server->threadPool = new ThreadPool(init_threads);
 
     server->jsCellBufferCallback.Reset(iso, Local<Function>::Cast(Undefined(iso)));

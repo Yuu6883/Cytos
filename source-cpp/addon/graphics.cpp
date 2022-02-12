@@ -368,7 +368,6 @@ void render(const FunctionCallbackInfo<Value>& args) {
     loadUVKey(RING, ringTex);
     loadUVKey(VIRUS, virusTex);
 
-    // This line nukes
     auto arr = fieldTyped(clientObj, "botTex", Array);
     auto botTex = indexTyped(arr, (lastRAF / 250) % 4, Object);
 

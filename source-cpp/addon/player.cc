@@ -39,7 +39,7 @@ void Player::setEngine(Engine* engine) {
     if (engine->dualEnabled) {
         dual->setEngine(engine);
         dual->join();
-        dual->control->overwrites.view = 20;
+        // dual->control->overwrites.view = 20;
         dual->control->overwrites.canSpawn = engine->defaultCanSpawn;
 
         pids[1] = dual->control->id;
@@ -49,7 +49,7 @@ void Player::setEngine(Engine* engine) {
 
     engine->players++;
     join();
-    control->overwrites.view = 20;
+    // control->overwrites.view = 20;
     control->overwrites.canSpawn = engine->defaultCanSpawn;
 
     pids[0] = control->id;
