@@ -6,7 +6,11 @@ export interface CytosTimings {
     spawn_handles: number;
     update_cells: number;
     resolve_physics: number;
+    io: number[];
+    tree: number[];
     physics: number[];
+    queries: number[];
+    counter: number[];
 }
 
 export interface CytosVersion {

@@ -40,6 +40,7 @@
     display: grid;
     grid-template-columns: 150px auto;
     column-gap: 5px;
+    white-space: pre-wrap;
 }
 
 .nerdItem > *:last-child {
