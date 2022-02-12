@@ -23,6 +23,10 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 message(INFO "cmake-js include dir: ${CMAKE_JS_INC}")
 
+if (WIN32)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} /fp:fast")
+endif()
+
 include_directories(${CMAKE_JS_INC})
 
 add_library(${PROJECT_NAME} SHARED ${ADDON_FILES} ${CMAKE_JS_SRC})
