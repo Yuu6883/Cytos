@@ -605,7 +605,8 @@ public:
                 }
             }
 
-            if (curr->items.size() >= maxItems || curr->level > minLevel) {
+            // If this node split already
+            if (curr->branches || curr->level > minLevel) {
                 for (auto other : curr->items) {
                     if (&cell != other) cb(other, curr->level);
                 }

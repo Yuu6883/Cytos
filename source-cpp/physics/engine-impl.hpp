@@ -596,8 +596,6 @@ void TemplateEngine<T>::handleIO(float dt) {
                 c->splitAttempts.erase(std::remove_if(c->splitAttempts.begin(), c->splitAttempts.end(), 
                     [&] (SplitAttempt& s) { return s.attempt <= 0 || s.tick >= expireTick; }), c->splitAttempts.end());
 
-                // continue;
-
                 uint16_t ejectedCount = 0;
                 float maxEjectPerTick = dt / T.EJECT_DELAY;
                 // Eject
