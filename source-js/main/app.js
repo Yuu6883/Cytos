@@ -75,6 +75,9 @@ class CytosMain {
             globalShortcut.register('CommandOrControl+R', _ => {});
             globalShortcut.register('CommandOrControl+Shift+R', _ => {});
             globalShortcut.register('F5', _ => {});
+            globalShortcut.register('F11', _ =>
+                this.window.setFullScreen(!this.window.isFullScreen()),
+            );
         });
 
         this.window.on('blur', () => {
