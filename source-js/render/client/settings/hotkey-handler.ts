@@ -3,10 +3,10 @@
 import Client from '..';
 
 import { Hotkeys, HotkeysList } from './keybinds';
-import { Mouse, MiceList, MOUSE_ACTIONS } from './mouse';
-import { SettingList, Settings } from './settings';
+import { Mouse, MiceList } from './mouse';
+import { SettingList } from './settings';
 import { HUDStore } from '../../stores/hud';
-import { ThemeList, Themes, updateCursor } from './themes';
+import { ThemeList, updateCursor } from './themes';
 
 const EventType = {
     NONE: 0,
