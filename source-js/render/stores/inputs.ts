@@ -37,8 +37,8 @@ try {
     bootState = JSON.parse(localStorage.getItem('cytos-inputs') || 'null');
     if (typeof bootState !== 'object') bootState = {};
     if (typeof bootState.name === 'undefined') bootState.name = '';
-    if (typeof bootState.skin1 === 'undefined') bootState.skin1 = '';
-    if (typeof bootState.skin2 === 'undefined') bootState.skin2 = '';
+    if (typeof bootState.skin1 === 'undefined') bootState.skin1 = defaultSkin;
+    if (typeof bootState.skin2 === 'undefined') bootState.skin2 = defaultSkin;
 
     if (Array.isArray(bootState.mySkins)) DefaultSkinStore.mySkins = bootState.mySkins;
 

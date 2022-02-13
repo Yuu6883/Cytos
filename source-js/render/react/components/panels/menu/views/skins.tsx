@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import ReactToolTip from 'react-tooltip';
 import Style from '../../../../css/skins.module.css';
 import { useState as useStore, none } from '@hookstate/core';
-import { InputStore, SaveInputs, SkinStore } from '../../../../../stores/inputs';
+import {
+    defaultSkin,
+    InputStore,
+    SaveInputs,
+    SkinStore,
+} from '../../../../../stores/inputs';
 import { MouseSVG } from '../../content/icons/mouse';
 import Client from '../../../../../client';
 import { Themes } from '../../../../../client/settings/themes';
@@ -75,9 +80,44 @@ export const Skins = () => {
             </p>
             <div className={Style.skins}>
                 {Array.from({ length: skins.maxSlots.value }, (_, i) => {
-                    const skin = skins.mySkins.value[i];
+                    const skin = skins.mySkins.value[i + 2];
 
-                    if (skin) {
+                    if (i === 0) {
+                        return (
+                            <Skin
+                                key={0}
+                                url=""
+                                onClick={() => {
+                                    inputs.skin1.set('');
+                                    SaveInputs();
+                                }}
+                                onContextMenu={() => {
+                                    inputs.skin2.set('');
+                                    SaveInputs();
+                                }}
+                                isSkin1={inputs.skin1.value === ''}
+                                isSkin2={inputs.skin2.value === ''}
+                                empty
+                            />
+                        );
+                    } else if (i === 1) {
+                        return (
+                            <Skin
+                                key={1}
+                                url={defaultSkin}
+                                onClick={() => {
+                                    inputs.skin1.set(defaultSkin);
+                                    SaveInputs();
+                                }}
+                                onContextMenu={() => {
+                                    inputs.skin2.set(defaultSkin);
+                                    SaveInputs();
+                                }}
+                                isSkin1={inputs.skin1.value === defaultSkin}
+                                isSkin2={inputs.skin2.value === defaultSkin}
+                            />
+                        );
+                    } else if (skin) {
                         return (
                             <Skin
                                 key={skin + i}
@@ -87,11 +127,10 @@ export const Skins = () => {
                                 isSkin1={inputs.skin1.value === skin}
                                 isSkin2={inputs.skin2.value === skin}
                                 onDelete={e => onDelete(e, i)}
-                                count={skins.mySkins.length}
                             />
                         );
                     } else {
-                        return <EmptySlot key={i} />;
+                        return <EmptySlot key={i} tip="Empty Slot" />;
                     }
                 })}
             </div>
@@ -103,10 +142,10 @@ type SkinProps = {
     url: string;
     onClick: () => void;
     onContextMenu: () => void;
-    onDelete: (e: React.MouseEvent<HTMLElement, MouseEvent>) => void;
+    onDelete?: (e: React.MouseEvent<HTMLElement, MouseEvent>) => void;
     isSkin1: boolean;
     isSkin2: boolean;
-    count: number;
+    empty?: boolean;
 };
 
 const getBadge = (isPrim: boolean, isSec: boolean) => {
@@ -118,10 +157,21 @@ const getBadge = (isPrim: boolean, isSec: boolean) => {
 
 const badgeNames = ['', 'Skin 1 + 2', 'Skin 1', 'Skin 2'];
 
-const EmptySlot = () => <div className={Style.empty} data-tip="Empty Slot"></div>;
+const EmptySlot = (props: { tip: string }) => (
+    <div className={Style.empty} data-tip={props.tip}></div>
+);
 
-const Skin = ({ url, onClick, onContextMenu, onDelete, isSkin1, isSkin2 }: SkinProps) => {
+const Skin = ({
+    url,
+    onClick,
+    onContextMenu,
+    onDelete,
+    isSkin1,
+    isSkin2,
+    empty,
+}: SkinProps) => {
     const [color, setColor] = useState([1, 1, 1]);
+    const [isEmpty, setEmpty] = useState(!!empty);
 
     const badge = getBadge(isSkin1, isSkin2);
 
@@ -156,15 +206,20 @@ const Skin = ({ url, onClick, onContextMenu, onDelete, isSkin1, isSkin2 }: SkinP
                     </span>
                 </div>
             )}
-            <i className="fas fa-times" onClick={onDelete} />
-            <img
-                style={{ border: `3px solid ${border}` }}
-                className="rainbow"
-                crossOrigin="anonymous"
-                src={url}
-                onLoad={e => setColor(Client.sampleColor(e.currentTarget, '#888888'))}
-                alt="Skin"
-            />
+            {onDelete && <i className="fas fa-times" onClick={onDelete} />}
+            {isEmpty ? (
+                <EmptySlot tip="Empty Skin" />
+            ) : (
+                <img
+                    style={{ border: `3px solid ${border}` }}
+                    className="rainbow"
+                    crossOrigin="anonymous"
+                    src={url}
+                    onLoad={e => setColor(Client.sampleColor(e.currentTarget, '#888888'))}
+                    onError={_ => setEmpty(true)}
+                    alt="Skin"
+                />
+            )}
         </div>
     );
 };
