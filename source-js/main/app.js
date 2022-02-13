@@ -1,6 +1,6 @@
 const path = require('path');
 const electron = require('electron');
-const { app, BrowserWindow, ipcMain, Tray, Menu } = electron;
+const { app, ipcMain, globalShortcut, BrowserWindow } = electron;
 
 const ICON_PATH = path.resolve(__dirname, '..', 'cytos.ico');
 
@@ -21,9 +21,9 @@ class CytosMain {
             return;
         } else {
             app.on('second-instance', () => {
-                if (this.mainWindow) {
-                    if (this.mainWindow.isMinimized()) this.mainWindow.restore();
-                    this.mainWindow.focus();
+                if (this.window) {
+                    if (this.window.isMinimized()) this.window.restore();
+                    this.window.focus();
                 }
             });
         }
@@ -32,12 +32,12 @@ class CytosMain {
     init() {
         app.on('ready', () => this.createMainWindow())
             .on('window-all-closed', () => process.platform !== 'darwin' && app.quit())
-            .on('activate', () => !this.mainWindow && createMainWindow())
+            .on('activate', () => !this.window && createMainWindow())
             .on('before-quit', () => this.beforeQuit())
             .on('quit', () => this.onQuit());
 
         ipcMain
-            .on('minimize', () => this.mainWindow && this.mainWindow.hide())
+            .on('minimize', () => this.window && this.window.hide())
             .on('toggle', () => this.toggle())
             .on('close', () => this.closeMain())
             .on('quit', () => this.quit())
@@ -45,7 +45,9 @@ class CytosMain {
     }
 
     createMainWindow() {
-        this.mainWindow = new BrowserWindow({
+        console.log('Creating window');
+
+        this.window = new BrowserWindow({
             icon: ICON_PATH,
             // frame: false,
             // transparent: true,
@@ -68,81 +70,67 @@ class CytosMain {
             },
         });
 
-        this.mainWindow.loadFile(path.join(__dirname, '..', 'build', 'index.html'));
-
-        this.tray = new Tray(ICON_PATH);
-        this.tray.setToolTip('Cytos');
-        this.tray.setContextMenu(
-            Menu.buildFromTemplate([
-                { label: 'Relaunch', click: () => (app.relaunch(), app.exit(0)) },
-                { label: 'Exit', click: () => app.exit(0) },
-            ]),
-        );
-
-        this.tray.on('double-click', () => {
-            this.mainWindow.show();
-        });
-
-        this.mainWindow.on('ready-to-show', () => {
+        this.window.loadFile(path.join(__dirname, '..', 'build', 'index.html'));
+        this.window.webContents.once('did-finish-load', () => {
+            console.log('Window content loaded');
             // this.mainWindow.removeMenu();
-            this.mainWindow.webContents.setZoomFactor(1);
-            this.mainWindow.show();
+            this.window.webContents.setZoomFactor(1);
+            this.window.show();
         });
 
-        this.mainWindow.webContents.on('dom-ready', () => {
-            this.mainWindow.webContents.send('appPath', app.getAppPath());
-            this.mainWindow.webContents.send('downloadPath', app.getPath('downloads'));
+        this.window.on('close', e => this.alertQuit(e));
+        this.window.on('focus', () => {
+            globalShortcut.register('CommandOrControl+R', _ => {});
+            globalShortcut.register('CommandOrControl+Shift+R', _ => {});
+            globalShortcut.register('F5', _ => {});
         });
 
-        this.mainWindow.on('close', e => this.alertQuit(e));
+        this.window.on('blur', () => {
+            globalShortcut.unregisterAll();
+        });
     }
 
     quit() {
         console.log('App exiting');
 
-        this.tray.destroy();
-        this.mainWindow.destroy();
+        this.window.destroy();
         app.quit(0);
         process.exit(0);
     }
 
     /** @param {Electron.Event} e */
     alertQuit(e) {
-        if (!this.mainWindow) return;
-        this.mainWindow.show();
-        this.mainWindow.focus();
-        this.mainWindow.center();
-        this.mainWindow.webContents.send('alertQuit');
+        if (!this.window) return;
+        this.window.show();
+        this.window.focus();
+        this.window.center();
+        this.window.webContents.send('alertQuit');
 
         e.preventDefault();
     }
 
     toggle() {
-        if (!this.mainWindow) return;
+        if (!this.window) return;
 
-        this.mainWindow.isMaximized()
-            ? this.mainWindow.unmaximize()
-            : this.mainWindow.maximize();
-        this.mainWindow.movable = !this.mainWindow.isMaximized();
+        this.window.isMaximized() ? this.window.unmaximize() : this.window.maximize();
+        this.window.movable = !this.window.isMaximized();
     }
 
     showMain() {
-        this.mainWindow.flashFrame(true);
-        setTimeout(() => this.mainWindow.flashFrame(false), 3000);
-        this.mainWindow.show();
-        this.mainWindow.restore();
-        this.mainWindow.focus();
+        this.window.flashFrame(true);
+        setTimeout(() => this.window.flashFrame(false), 3000);
+        this.window.show();
+        this.window.restore();
+        this.window.focus();
     }
 
     closeMain() {
-        this.mainWindow && this.mainWindow.hide();
+        this.window && this.window.hide();
     }
 
     beforeQuit() {}
 
-    onQuit() {
-        this.tray && !this.tray.isDestroyed() && this.tray.destroy();
-    }
+    onQuit() {}
 }
 
 module.exports = CytosMain;

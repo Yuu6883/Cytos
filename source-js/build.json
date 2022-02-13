@@ -1,0 +1,8 @@
+{
+    "appId": "cytosIO.cytos",
+    "productName": "Cytos Desktop",
+    "executableName": "Cytos",
+    "icon": "cytos-big.ico",
+    "copyright": "Copyright © 2022 Yuu6883",
+    "files": ["main/*.js", "build/*"]
+}
