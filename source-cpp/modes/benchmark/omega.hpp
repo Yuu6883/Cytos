@@ -15,7 +15,7 @@ constexpr OPT omega_bench_opt {
     .GRID_EV_SIZE = 256,
 
     .QUADTREE_MAX_LEVEL = 18,
-    .QUADTREE_MAX_ITEMS = 20,
+    .QUADTREE_MAX_ITEMS = 16,
 
     .PERK_INTERVAL = 10.f,
     .MIN_PERK_SIZE = 100000.f,
@@ -53,7 +53,7 @@ constexpr OPT omega_bench_opt {
     .PLAYER_MIN_SPLIT_SIZE = 150.f,
     .PLAYER_NO_COLLI_DELAY = 540,
     .PLAYER_NO_EJECT_DELAY = 200,
-    .PLAYER_VIEW_SCALE = 2.f,
+    .PLAYER_VIEW_SCALE = 2.5f,
 
     .LOCAL_DECAY = 0.7f,
     .STATIC_DECAY = 1.2f,
