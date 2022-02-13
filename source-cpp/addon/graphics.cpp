@@ -856,6 +856,30 @@ void clear(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(Boolean::New(iso, true));
 }
 
+void getPID(const FunctionCallbackInfo<Value>& args) {
+    auto state = static_cast<ClientState*>(Local<External>::Cast(args.Data())->Value());
+    auto iso = args.GetIsolate();
+    auto ctx = iso->GetCurrentContext();
+
+    float x = (float) args[0]->NumberValue(ctx).ToChecked();
+    float y = (float) args[1]->NumberValue(ctx).ToChecked();
+    
+    float maxR = 0.f;
+    uint16_t pid = 0;
+    for (auto& c : state->rendering) {
+        if (c->type > CYT_TYPE) continue;
+        if (c->cR < maxR) continue;
+        float dx = x - c->cX;
+        float dy = y - c->cY;
+        float sqr = dx * dx + dy * dy;
+        if (sqr > c->cR * c->cR) continue;
+        maxR = c->cR;
+        pid = c->type;
+    }
+
+    args.GetReturnValue().Set(Number::New(iso, pid));
+}
+
 // Helper function to set export value
 template<typename Str, typename Func>
 inline void exportFunc(Isolate*& isolate, Local<Object>& exports, Local<External>& ctx, Str name, Func func) {
@@ -868,7 +892,6 @@ inline void exportFunc(Isolate*& isolate, Local<Object>& exports, Local<External
 
 extern "C" NODE_MODULE_EXPORT void
 NODE_MODULE_INITIALIZER(Local<Object> exports, Local<Value> module, Local<Context> context) {
-        
     Isolate* isolate = exports->GetIsolate();
     
     // Per context state
@@ -880,4 +903,5 @@ NODE_MODULE_INITIALIZER(Local<Object> exports, Local<Value> module, Local<Contex
     exportFunc(isolate, exports, ctx, "parse", parse);
     exportFunc(isolate, exports, ctx, "getCellColor", getCellColor);
     exportFunc(isolate, exports, ctx, "clear", clear);
+    exportFunc(isolate, exports, ctx, "getPID", getPID);
 }

@@ -61,6 +61,7 @@ interface RenderModuleAddon {
     parse(client: Client, buf: ArrayBuffer): number;
     getCellColor(index: number): [number, number, number];
     clear(): void;
+    getPID(x: number, y: number): number;
 }
 
 const RenderModule: RenderModuleAddon = eval("require('./gfx-addon.node')");
@@ -744,26 +745,22 @@ export default class Client {
     }
 
     public spectateAtCursor(biggest = false) {
-        // if (biggest) {
-        //     this.protocol.reqSpec(65535);
-        // } else {
-        //     this.protocol.reqSpec(this.pidAtCursor());
-        // }
+        this.input.spectateTarget = biggest ? 65535 : this.pidAtCursor();
     }
 
     public spectate(pid: number) {
-        // this.protocol.reqSpec(pid);
+        this.input.spectateTarget = pid;
     }
 
     private pidAtCursor() {
-        return 0;
+        return RenderModule.getPID(this.cursor.position[0], this.cursor.position[1]);
     }
 
     public getUserAtCursor() {
         const pid = this.pidAtCursor();
         if (!pid) return { empty: true };
-        // if (pid === CYT_TYPE) return { cyt: true };
-        // if (pid === EXP_TYPE) return { exp: true };
+        if (pid === 16380) return { cyt: true };
+        if (pid === 16379) return { exp: true };
         const player = this.playerData.get(pid);
         if (!player) return { unknown: true, pid: pid };
         if (player.isBot) return { bot: true, pid: pid };

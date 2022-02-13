@@ -107,7 +107,7 @@ struct Engine {
     atomic<cell_cord_prec> playerMass = 0;
     atomic<cell_cord_prec> botMass = 0;
 
-    bool hidePerks = true;
+    bool hidePerks = false;
     bool updateBot = true;
     bool ignoreInput = false;
     bool shouldRestart = false;

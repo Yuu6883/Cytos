@@ -1,6 +1,6 @@
 import { useState } from '@hookstate/core';
 import { HUDStore } from '../../../stores/hud';
-import { defaultSkin } from '../../../stores/inputs';
+import { defaultSkin, GetInputs } from '../../../stores/inputs';
 import BotGIF from '../../../img/bot.gif';
 import CYTGIF from '../../../img/cyt.gif';
 import EXPGIF from '../../../img/exp.gif';
@@ -23,7 +23,6 @@ const ContextMenu = () => {
 
     let colorStyle: React.CSSProperties = {};
 
-    const user = null;
     if (data.unknown) {
         img = defaultSkin;
         name = '???';
@@ -38,11 +37,12 @@ const ContextMenu = () => {
         name = 'EXP';
     } else if (data.id <= 0) {
         name = GuestName(-data.id);
-    } else if (user) {
-        img = defaultSkin;
-        name = user.name;
+    } else {
+        const [n, skin] = GetInputs();
+        img = skin;
+        name = n;
         imgClass += ' rainbow';
-        colorStyle = getUIColorStyle(user.color);
+        colorStyle = getUIColorStyle();
     }
 
     // have pid AND spectating someone OR not alive

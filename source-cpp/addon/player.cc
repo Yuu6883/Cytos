@@ -62,7 +62,7 @@ void Player::spawn(uint8_t tab) {
 
 void Player::spec(uint16_t target) {
     if (!target || !engine) return;
-    if (target == pids[0] || target == pids[1]) {
+    if (isAlive() || target == pids[0] || target == pids[1]) {
         spectate = nullptr;
         return;
     }
@@ -180,10 +180,14 @@ void Player::onTick() {
 
     Control* c1 = control;
     Control* c2 = dual ? dual->control : nullptr;
+
+    float factor = 1.f;
     
     if (spectate) {
         c1 = spectate->control;
         if (spectate->dual) c2 = spectate->dual->control;
+
+        factor = 1.5f;
     }
 
     if (!c2) c2 = c1;
@@ -191,8 +195,8 @@ void Player::onTick() {
     auto map = engine->getMap();
     AABB boxM = map.toAABB();
     // Clip to map size
-    AABB box1 = c1->viewport.toAABB() && boxM;
-    AABB box2 = c2->viewport.toAABB() && boxM;
+    AABB box1 = (c1->viewport * factor).toAABB() && boxM;
+    AABB box2 = (c2->viewport * factor).toAABB() && boxM;
     bool a1 = c1->alive, a2 = c2->alive;
 
     if (!a1 && !a2) {
