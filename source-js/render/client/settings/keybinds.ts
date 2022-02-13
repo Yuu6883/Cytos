@@ -1,5 +1,3 @@
-// credit to nebula for this file totally didnt take it from him lmao
-
 import { Setting } from './setting';
 import { S } from './settings';
 
@@ -26,7 +24,7 @@ const s = {
     zoomIn: new S('zoomIn', ''),
     zoomOut: new S('zoomOut', ''),
     save: new S('save', 'CTRL+S'),
-    restore: new S('restore', 'CTRL+R'),
+    restore: new S('restore', 'ALT+X'),
     // minion
     macro_minion: new S('macro_minion', ''),
     split1_minion: new S('split1_minion', ''),
