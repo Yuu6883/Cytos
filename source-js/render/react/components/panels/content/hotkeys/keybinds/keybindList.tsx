@@ -43,8 +43,6 @@ export const KeyItem = (props: ItemProps) => {
 
             if (key === 'DELETE' || key === 'BACKSPACE') key = '';
 
-            Hotkeys[setting.ref.k + (minion ? 'minion' : '')] = key;
-
             minion ? (setting.setMinionValue = key) : (setting.v = key);
 
             event.currentTarget.blur();

@@ -20,7 +20,7 @@ export const RightPanel = (props: { transition?: string }) => {
     useEffect(() => {
         if (connected) {
             setCooldown(true);
-            const timeout = setTimeout(() => setCooldown(false), 2500);
+            const timeout = setTimeout(() => setCooldown(false), 500);
             return () => clearTimeout(timeout);
         } else return () => {};
     }, [connected]);

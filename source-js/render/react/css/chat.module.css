@@ -6,7 +6,7 @@
     min-width: 400px;
     min-height: 300px;
     background-color: rgba(14, 11, 23, 0.5);
-    position: absolute;
+    position: fixed;
     z-index: 1;
 }
 

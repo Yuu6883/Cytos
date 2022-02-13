@@ -27,7 +27,6 @@ export class Setting<T> {
     public valueMap: { [v: string]: string };
     public details: SettingDetails<T>;
     public dep: string[];
-    public nowrite: boolean;
 
     public constructor(
         ref: S<T>,
@@ -40,7 +39,6 @@ export class Setting<T> {
         this.details = details;
         this.valueMap = valueMap;
         this.dep = details.dep || [];
-        this.nowrite = false;
     }
 
     public init() {
@@ -91,8 +89,7 @@ export class Setting<T> {
         this.value = value;
         this.ref.v = value;
 
-        if (!this.nowrite)
-            localStorage.setItem('cytos-settings-' + this.ref.k, String(this.value));
+        localStorage.setItem('cytos-settings-' + this.ref.k, String(this.value));
 
         if (this.details.state) this.details.state.set(value);
     }
@@ -104,11 +101,11 @@ export class Setting<T> {
     public set setMinionValue(value: T) {
         this.minionValue = value;
         this.details.minion.v = value;
-        if (!this.nowrite)
-            localStorage.setItem(
-                'cytos-settings-minion-' + this.ref.k,
-                String(this.minionValue),
-            );
+
+        localStorage.setItem(
+            'cytos-settings-minion-' + this.ref.k,
+            String(this.minionValue),
+        );
     }
 
     private parseSetting(value: string) {

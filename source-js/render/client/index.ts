@@ -63,9 +63,7 @@ interface RenderModuleAddon {
     clear(): void;
 }
 
-const RenderModule: RenderModuleAddon = eval(
-    "require('../../build/Release/gfx-addon.node')",
-);
+const RenderModule: RenderModuleAddon = eval("require('./gfx-addon.node')");
 
 class InputHandler {
     private readonly client: Client;

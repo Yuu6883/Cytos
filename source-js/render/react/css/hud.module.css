@@ -1,6 +1,6 @@
 .stats {
     color: white;
-    position: absolute;
+    position: fixed;
     width: auto;
     top: 0px;
     left: 0px;
