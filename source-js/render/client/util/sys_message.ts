@@ -1,7 +1,7 @@
 import { ChatType, sysMsg } from '../../stores/hud';
 
 export const SYS = {
-    msg: (msg: string) => sysMsg(ChatType.GAME, msg),
+    msg: (msg: string) => sysMsg(ChatType.NONE, msg),
     gameConnected: (server: string) => sysMsg(ChatType.NONE, `Connected to $0`, server),
     gameDisconnected: (server: string, reason?: string) =>
         reason

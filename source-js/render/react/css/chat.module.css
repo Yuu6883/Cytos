@@ -1,10 +1,10 @@
 .chatBox {
     bottom: 0;
     left: 0;
-    height: 30vh;
-    width: 30vh;
-    min-width: 400px;
-    min-height: 300px;
+    height: 10vh;
+    width: 20vw;
+    min-width: 200px;
+    min-height: 150px;
     background-color: rgba(14, 11, 23, 0.5);
     position: fixed;
     z-index: 1;
@@ -18,7 +18,7 @@
     display: inline-flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: bold;
     background-color: #16253699;
     cursor: pointer;
@@ -46,7 +46,7 @@
 .chatMessage {
     color: white;
     margin-bottom: 1px;
-    font-size: 16px;
+    font-size: 10px;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -56,7 +56,7 @@
 
 .chatPrefix {
     color: rgb(175, 175, 175);
-    font-size: 12px;
+    font-size: 10px;
     font-weight: bold;
 }
 
@@ -74,7 +74,7 @@
 
 .systemMsg {
     color: rgb(175, 175, 175);
-    font-size: 16px;
+    font-size: 10px;
     font-weight: bold;
     padding: 2px;
 }
@@ -109,7 +109,7 @@
     outline: none;
     background-color: transparent;
     font-family: 'Armata';
-    font-size: 15px;
+    font-size: 10px;
     color: white;
     padding: 0 10px;
     padding-right: 31px;
@@ -133,7 +133,7 @@
 }
 
 .toBottom {
-    font-size: 12px;
+    font-size: 10px;
     padding: 5px;
     position: absolute;
     bottom: 5px;
@@ -195,34 +195,4 @@
 .laffIcon[aria-disabled='true'] {
     cursor: normal;
     color: #666;
-}
-
-.emotesList {
-    flex-direction: row;
-    position: absolute;
-    bottom: 50px;
-    right: -12px;
-    margin: auto;
-    width: max-content;
-    max-width: 315px;
-    z-index: 1;
-    color: white;
-    max-height: 360px;
-    overflow-y: hidden;
-    flex-wrap: wrap;
-    padding: 0px;
-    background-color: rgba(55, 55, 55, 0.5);
-}
-
-.emotesList > img {
-    padding: 3px;
-    width: 35px;
-    height: 35px;
-    cursor: pointer;
-    border: 2px solid transparent;
-    object-fit: contain;
-}
-
-.emotesList > img:hover {
-    border: 2px solid #ac2a3d;
 }

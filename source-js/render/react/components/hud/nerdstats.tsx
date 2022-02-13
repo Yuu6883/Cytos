@@ -45,11 +45,10 @@ const Timings = ({ timings: t }: { timings: CytosTimings }) => {
     return (
         <>
             <NerdStatsItem
-                k="Engine Load"
+                k={`Load (${t.threads} threads)`}
                 value={(t.usage * 100).toFixed(2) + '%'}
-                style={{ color, marginTop: '25px' }}
+                style={{ color, marginTop: '5px', gridTemplateColumns: '150px auto' }}
             />
-            <NerdStatsItem k="Threads" value={t.threads} />
             <details>
                 <summary>Engine Timings:</summary>
                 <NerdStatsItem k="Spawn Cells" value={ms(t.spawn_cells)} />
@@ -131,6 +130,7 @@ export const NerdStats = () => {
                 value={stats.compile}
                 style={{ gridTemplateColumns: '100px auto' }}
             />
+            {stats.timings && <Timings timings={stats.timings} />}
             <details>
                 <summary>Render Stats</summary>
                 <NerdStatsItem
@@ -154,7 +154,6 @@ export const NerdStats = () => {
                     style={{ gridTemplateColumns: '120px auto' }}
                 />
             </details>
-            {stats.timings && <Timings timings={stats.timings} />}
             <p>Press F1 to hide stats</p>
         </div>
     );
