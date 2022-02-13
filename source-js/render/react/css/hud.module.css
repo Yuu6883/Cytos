@@ -31,8 +31,16 @@
     margin: 10px;
     background-color: rgba(0, 0, 0, 0.5);
     font-size: 12px;
+}
 
-    pointer-events: none;
+.nerd > details {
+    margin: 5px;
+}
+
+.nerd summary:hover {
+    color: #e53146;
+    font-weight: bold;
+    cursor: var(--use-cursor2);
 }
 
 .nerdItem {

@@ -360,14 +360,34 @@ CYTOS_IMPL(setInput) {
 
         auto& input = p->inputs[i];
 
-        input.line = boolField(tabObj, "line");
-        input.macro = boolField(tabObj, "macro");
-        input.spawn = boolField(tabObj, "spawn");
+        input.line  |= boolField(tabObj, "line");
+        input.spawn |= boolField(tabObj, "spawn");
+        input.macro  = boolField(tabObj, "macro");
         input.splits = std::min(input.splits + intField(tabObj, "splits"), 14);
         input.ejects = intField(tabObj, "ejects");
         input.mouseX = intField(tabObj, "mouseX");
         input.mouseY = intField(tabObj, "mouseY");
     }
+}
+
+CYTOS_IMPL(restart) {
+    auto iso = args.GetIsolate();
+    auto server = static_cast<Server*>(Local<External>::Cast(args.Data())->Value());
+
+    auto& engine = server->engine;
+    auto& player = server->player;
+
+    if (!engine || !player) {
+        logger::error("engine & player required\n");
+        return;
+    }
+
+    // Reset again if error happens
+    player->setEngine(nullptr);
+    engine->reset();
+    player->setEngine(engine);
+
+    args.GetReturnValue().Set(Boolean::New(iso, true));
 }
 
 // Helper function to set export value
@@ -411,6 +431,7 @@ Server* CytosAddon::Main(Local<Object> exports) {
 
     exportFunc(iso, exports, serverCtx, "save", CytosAddon::save);
     exportFunc(iso, exports, serverCtx, "restore", CytosAddon::restore);
+    exportFunc(iso, exports, serverCtx, "restart", CytosAddon::restart);
 
     return server;
 }

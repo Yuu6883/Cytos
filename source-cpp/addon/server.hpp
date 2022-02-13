@@ -37,7 +37,8 @@ namespace CytosAddon {
     DECL_V8_EXPORT(setBufferCallback);
     DECL_V8_EXPORT(setInfoCallback);
     DECL_V8_EXPORT(getTimings);
-
+    
+    DECL_V8_EXPORT(restart);
     DECL_V8_EXPORT(restore);
     DECL_V8_EXPORT(save);
 

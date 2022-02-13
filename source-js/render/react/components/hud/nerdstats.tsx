@@ -50,53 +50,62 @@ const Timings = ({ timings: t }: { timings: CytosTimings }) => {
                 style={{ color, marginTop: '25px' }}
             />
             <NerdStatsItem k="Threads" value={t.threads} />
-            <NerdStatsItem k="Spawn Cells" value={ms(t.spawn_cells)} />
-            <NerdStatsItem k="Handle IO" value={ms(t.handle_io)} />
-            <NerdStatsItem k="Spawn Handles" value={ms(t.spawn_handles)} />
-            <NerdStatsItem k="Update Cells" value={ms(t.update_cells)} />
-            <NerdStatsItem
-                k="Physics Total"
-                value={ms(t.resolve_physics)}
-                style={{ marginBottom: '10px' }}
-            />
-            <p>IO Timings:</p>
-            {t.io.map((k, i) => (
-                <NerdStatsItem key={i} k={IO[i]} value={ms(k)} />
-            ))}
-            <p>Physics Timings:</p>
-            {t.physics.map((k, i) => (
-                <NerdStatsItem key={i} k={PHY[i]} value={ms(k)} />
-            ))}
-            <p>QuadTree Queries:</p>
-            <NerdStatsItem
-                k="Query1"
-                value={`${((t.queries[1] / t.queries[0]) * 100).toFixed(2)}% (${K(
-                    t.queries[1],
-                    4,
-                )}/${K(t.queries[0], 4)})`}
-                style={{ gridTemplateColumns: '80px auto', whiteSpace: 'pre' }}
-            />
-            <NerdStatsItem
-                k="Query2"
-                value={`${((t.queries[3] / t.queries[2]) * 100).toFixed(2)}% (${K(
-                    t.queries[3],
-                    4,
-                )}/${K(t.queries[2], 4)})`}
-                style={{ gridTemplateColumns: '80px auto', whiteSpace: 'pre' }}
-            />
-            <p>QuadTree: Items | Callbacks | Efficiency</p>
-            {t.tree.map((k, i) => (
+            <details>
+                <summary>Engine Timings:</summary>
+                <NerdStatsItem k="Spawn Cells" value={ms(t.spawn_cells)} />
+                <NerdStatsItem k="Handle IO" value={ms(t.handle_io)} />
+                <NerdStatsItem k="Spawn Handles" value={ms(t.spawn_handles)} />
+                <NerdStatsItem k="Update Cells" value={ms(t.update_cells)} />
                 <NerdStatsItem
-                    key={i}
-                    k={`TreeLevel[${i}]`}
-                    value={`${k.toString().padStart(4, ' ')} | ${K(
-                        t.counter[i * 2],
-                    )} | ${((t.counter[i * 2 + 1] / t.counter[i * 2]) * 100)
-                        .toFixed(4)
-                        .padStart(7, ' ')}%`}
+                    k="Physics Total"
+                    value={ms(t.resolve_physics)}
+                    style={{ marginBottom: '10px' }}
+                />
+            </details>
+            <details>
+                <summary>IO Timings:</summary>
+                {t.io.map((k, i) => (
+                    <NerdStatsItem key={i} k={IO[i]} value={ms(k)} />
+                ))}
+            </details>
+            <details>
+                <summary>Physics Timings:</summary>
+                {t.physics.map((k, i) => (
+                    <NerdStatsItem key={i} k={PHY[i]} value={ms(k)} />
+                ))}
+            </details>
+            <details>
+                <summary>QuadTree Stats</summary>
+                <NerdStatsItem
+                    k="Query1"
+                    value={`${((t.queries[1] / t.queries[0]) * 100).toFixed(2)}% (${K(
+                        t.queries[1],
+                        4,
+                    )}/${K(t.queries[0], 4)})`}
                     style={{ gridTemplateColumns: '80px auto', whiteSpace: 'pre' }}
                 />
-            ))}
+                <NerdStatsItem
+                    k="Query2"
+                    value={`${((t.queries[3] / t.queries[2]) * 100).toFixed(2)}% (${K(
+                        t.queries[3],
+                        4,
+                    )}/${K(t.queries[2], 4)})`}
+                    style={{ gridTemplateColumns: '80px auto', whiteSpace: 'pre' }}
+                />
+                <p>TreeLevels: Items | Callbacks | Efficiency</p>
+                {t.tree.map((k, i) => (
+                    <NerdStatsItem
+                        key={i}
+                        k={`TreeLevel[${i}]`}
+                        value={`${k.toString().padStart(4, ' ')} | ${K(
+                            t.counter[i * 2],
+                        )} | ${((t.counter[i * 2 + 1] / t.counter[i * 2]) * 100)
+                            .toFixed(4)
+                            .padStart(7, ' ')}%`}
+                        style={{ gridTemplateColumns: '80px auto', whiteSpace: 'pre' }}
+                    />
+                ))}
+            </details>
         </>
     );
 };
@@ -107,19 +116,44 @@ export const NerdStats = () => {
 
     return (
         <div className={Style.nerd} hidden={!nerdVisible}>
-            <NerdStatsItem k="Version" value={stats.version} />
-            <NerdStatsItem k="Uptime" value={prettyTime(stats.uptime)} />
-            <NerdStatsItem k="Compile" value={stats.compile} />
-            <NerdStatsItem k="Map" value={stats.map.join(' x ')} />
-            <NerdStatsItem k="Render Cells" value={stats.rendercells} />
             <NerdStatsItem
-                k="Mem Bandwidth"
-                value={prettyBytes(stats.bandwidth) + '/s'}
+                k="Version"
+                value={stats.version}
+                style={{ gridTemplateColumns: '100px auto' }}
             />
             <NerdStatsItem
-                k="GPU Bandwidth"
-                value={prettyBytes(stats.gpuBandwidth) + '/s'}
+                k="Uptime"
+                value={prettyTime(stats.uptime)}
+                style={{ gridTemplateColumns: '100px auto' }}
             />
+            <NerdStatsItem
+                k="Compile"
+                value={stats.compile}
+                style={{ gridTemplateColumns: '100px auto' }}
+            />
+            <details>
+                <summary>Render Stats</summary>
+                <NerdStatsItem
+                    k="Map"
+                    value={stats.map.join(' x ')}
+                    style={{ gridTemplateColumns: '120px auto' }}
+                />
+                <NerdStatsItem
+                    k="Render Cells"
+                    value={stats.rendercells}
+                    style={{ gridTemplateColumns: '120px auto' }}
+                />
+                <NerdStatsItem
+                    k="Mem Bandwidth"
+                    value={prettyBytes(stats.bandwidth) + '/s'}
+                    style={{ gridTemplateColumns: '120px auto' }}
+                />
+                <NerdStatsItem
+                    k="GPU Bandwidth"
+                    value={prettyBytes(stats.gpuBandwidth) + '/s'}
+                    style={{ gridTemplateColumns: '120px auto' }}
+                />
+            </details>
             {stats.timings && <Timings timings={stats.timings} />}
             <p>Press F1 to hide stats</p>
         </div>

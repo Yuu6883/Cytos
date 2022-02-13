@@ -20,13 +20,14 @@ interface CytosAddon {
     getTimings: () => CytosTimings;
     getVersion: () => CytosVersion;
 
+    restart: () => boolean;
     save: () => SaveResult;
     restore: (mode: string, buffer: Uint8Array) => boolean;
 }
 
 let db: IDBDatabase;
 
-const Cytos: CytosAddon = eval("require('../../build/Release/cytos-addon.node')");
+const Cytos: CytosAddon = eval("require('./cytos-addon.node')");
 
 ctx.postMessage({ version: Cytos.getVersion() });
 
@@ -40,6 +41,7 @@ initServerDB().then(o => (db = o));
 type WorkerDataEvent = MessageEvent<{
     save?: boolean;
     restore?: string;
+    restart?: boolean;
     mode?: string;
     threads?: number;
     isBenchmark?: boolean;
@@ -57,7 +59,7 @@ ctx.addEventListener('message', async (e: WorkerDataEvent) => {
     const { data } = e;
     if (!data || !db) return;
 
-    const { save, restore, mode, threads, input } = data;
+    const { save, restore, restart, mode, threads, input } = data;
 
     if (mode !== undefined) {
         const result = Cytos.save();
@@ -85,6 +87,8 @@ ctx.addEventListener('message', async (e: WorkerDataEvent) => {
         const result = Cytos.restore(restore, data);
         if (result) postMessage({ restore, bytes: data.byteLength });
     }
+
+    if (restart) postMessage({ restart: Cytos.restart() });
 });
 
 export default 0;

@@ -14,43 +14,6 @@ import { useState as useStore } from '@hookstate/core';
 import { HUDStore } from '../../stores/hud';
 import { GameContextMenu } from './hud/game-context';
 
-import AppIcon from '../../../cytos.ico';
-
-const NativeBar = () => (
-    <nav className="uk-navbar-container" id="app-nav" uk-navbar>
-        <div className="uk-navbar-left uk-margin-small-left">
-            <img id="app-icon" src={AppIcon} />
-            &nbsp;&nbsp;
-            <span id="app-title"> Cytos </span>
-        </div>
-        <div className="uk-navbar-right">
-            <ul className="uk-iconnav">
-                <li className="title-li">
-                    <span
-                        className="title-button"
-                        uk-icon="minus"
-                        id="minimize-button"
-                    ></span>
-                </li>
-                <li className="title-li">
-                    <span
-                        className="title-button"
-                        uk-icon="expand"
-                        id="toggle-button"
-                    ></span>
-                </li>
-                <li className="title-li">
-                    <span
-                        className="title-button"
-                        uk-icon="close"
-                        id="close-button"
-                    ></span>
-                </li>
-            </ul>
-        </div>
-    </nav>
-);
-
 const Overlay = () => {
     const menu = useStore(HUDStore.menu);
     const [show, setShow] = useState(true);
@@ -81,7 +44,6 @@ const Overlay = () => {
 export const CytosUI = () => {
     return (
         <>
-            <NativeBar />
             <Stats />
             <ChatBox />
             <ChatInput />

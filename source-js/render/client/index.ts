@@ -515,7 +515,8 @@ export default class Client {
                             }
                         }
                     }
-                    if (timings) HUDStore.nerdStats.timings.set(timings);
+                    // Could be null
+                    if (timings !== undefined) HUDStore.nerdStats.timings.set(timings);
                     if (version) {
                         this.upsince = version.timestamp;
                         HUDStore.nerdStats.version.set(version.version);
