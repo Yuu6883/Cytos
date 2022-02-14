@@ -6,7 +6,7 @@ export interface ServerData {
     players: number;
 }
 
-const MODES = ['ffa', 'instant', 'mega', 'omega', 'selffeed', 'ultra', 'rockslide'];
+const MODES = ['ffa', 'instant', 'mega', 'omega', 'selffeed', 'ultra'];
 const BENCH = ['omega'];
 
 export const ServerStore = createState<{ data: ServerData[] }>({
