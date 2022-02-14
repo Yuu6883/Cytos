@@ -50,7 +50,7 @@ All those changes brings about **3-4x single thread speedup** and **~20x speedup
 # Download
 Installer currently only available for Windows, but building for other platforms would be possible since `electron` and `cmake-js` are cross platform (see Developement section below)
 **Windows will show a warning popup because the installer not a signed binary.**
-// TODO: link
+[link](https://github.com/Yuu6883/Cytos/releases/tag/v1.0.0)
 
 # Development
 Requirements: 
