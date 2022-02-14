@@ -132,7 +132,7 @@ void RockEngine<T>::postResolve() {
     if (goal && goal->type == CYT_TYPE) {
         unordered_set<uint16_t> winnerTypes;
 
-        this->tree->query(*goal, true, [&](Cell* other, uint32_t) {
+        this->tree->query(*goal, false, [&](Cell* other, uint32_t) {
             float dx = other->x - goal->x;
             float dy = other->y - goal->y;
 
