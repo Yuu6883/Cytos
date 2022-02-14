@@ -7,6 +7,10 @@ void Bot::setNextAction(float seconds) {
 
 void Bot::onTick() {
     if (!engine->updateBot || engine->__now.load() < __nextActionTick) return;
+    if (engine->usage.load() > 0.75f) {
+        setNextAction(10.f);
+        return;
+    };
 
     auto AI = engine->getAI();
 
