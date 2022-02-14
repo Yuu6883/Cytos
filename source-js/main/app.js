@@ -1,6 +1,6 @@
 const path = require('path');
 const electron = require('electron');
-const { app, globalShortcut, BrowserWindow } = electron;
+const { app, screen, globalShortcut, BrowserWindow } = electron;
 
 const ICON_PATH = path.resolve(__dirname, '..', 'cytos.ico');
 
@@ -33,12 +33,13 @@ class CytosMain {
         app.on('ready', () => this.createMainWindow())
             .on('window-all-closed', () => process.platform !== 'darwin' && app.quit())
             .on('activate', () => !this.window && createMainWindow())
-            .on('before-quit', () => this.beforeQuit())
-            .on('quit', () => this.onQuit());
+            .on('quit', () => this.quit());
     }
 
     createMainWindow() {
         console.log('Creating window');
+
+        const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
         this.window = new BrowserWindow({
             icon: ICON_PATH,
@@ -50,10 +51,8 @@ class CytosMain {
             maximizable: true,
             show: false,
             resizable: true,
-            minWidth: 1280,
-            minHeight: 720,
-            width: 1280,
-            height: 720,
+            width: width * 0.8,
+            height: height * 0.8,
             backgroundColor: 'rbg(88, 88, 88)',
             webPreferences: {
                 nodeIntegration: true,
@@ -87,15 +86,7 @@ class CytosMain {
 
     quit() {
         console.log('App exiting');
-
-        this.window.destroy();
-        app.quit(0);
-        process.exit(0);
     }
-
-    beforeQuit() {}
-
-    onQuit() {}
 }
 
 module.exports = CytosMain;
