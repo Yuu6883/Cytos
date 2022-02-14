@@ -1,6 +1,6 @@
 {
     "name": "cytos",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Cytos Desktop",
     "main": "./main/index.js",
     "scripts": {
