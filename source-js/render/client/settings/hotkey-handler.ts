@@ -237,9 +237,6 @@ export class HotkeyHandler {
                 const massOP = SettingList.find(o => o.ref.k === 'renderMass');
                 massOP.v = ((massOP.v as number) + 1) % 3;
                 break;
-            case Hotkeys.toggleMinimap.v:
-                Client.instance.minimapExpand = !Client.instance.minimapExpand;
-                break;
             case Hotkeys.toggleHUD.v: {
                 const hudOP = SettingList.find(o => o.ref.k === 'showHUD');
                 hudOP.v = !hudOP.v;

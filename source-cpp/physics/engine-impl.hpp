@@ -730,29 +730,6 @@ void TemplateEngine<T>::handleIO(float dt) {
     server->threadPool->sync();
     
     timings.io.phase2 = time_func(t2, t3);
-
-    // Minimap, not needed if we only have 1 player ):
-    // constexpr uint32_t lbmm_repeat = 1000 / T.LBMM_TPS;
-    // if (__now > __lbmm + (lbmm_repeat * MS_TO_NANO)) {
-    //     __lbmm = __now;
-
-    //     Writer w;
-    //     handles.sort([](auto a, auto b) {
-    //         return a->getScore() > b->getScore();
-    //     });
-    //     for (auto h : handles) {
-    //         if (h->showOnLBMM && h->isAlive()) {
-    //             auto p = h->position();
-    //             w.write<uint16_t>(h->control->id);
-    //             w.write<uint16_t>(h->dual ? h->dual->control->id : 0);
-    //             w.write<float>(p.x);
-    //             w.write<float>(p.y);
-    //             w.write<float>(h->getScore());
-    //         }
-    //     }
-    //     w.write<uint16_t>(0);
-    //     emit(&GameHandle::onLBMMData, w.buffer());
-    // }
 }
 
 template<OPT const& T>

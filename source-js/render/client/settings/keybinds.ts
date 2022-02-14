@@ -18,7 +18,6 @@ const s = {
     toggleSkin: new S('toggleSkin', ''),
     toggleName: new S('toggleName', ''),
     toggleMass: new S('toggleMass', ''),
-    toggleMinimap: new S('toggleMinimap', 'M'),
     toggleHUD: new S('toggleHUD', 'U'),
     toggleBorder: new S('toggleBorder', ''),
     zoomIn: new S('zoomIn', ''),
@@ -125,9 +124,6 @@ export const HotkeyCategory: { [key: string]: Setting<number | boolean | string>
         }),
         new Setting(s.toggleMass, 5, {
             text: 'Toggle Mass',
-        }),
-        new Setting(s.toggleMinimap, 5, {
-            text: 'Toggle Minimap',
         }),
         new Setting(s.toggleHUD, 5, {
             text: 'Toggle HUD',

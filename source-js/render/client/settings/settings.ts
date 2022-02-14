@@ -121,11 +121,6 @@ export const SettingCategory: { [key: string]: Setting<number | boolean>[] } = {
             dep: ['showHUD'],
             state: HUDStore.visible.lb,
         }),
-        new Setting(s.showMM, 0, {
-            text: 'Show Minimap',
-            dep: ['showHUD'],
-            state: HUDStore.visible.mm,
-        }),
     ],
     Replay: [
         new Setting(

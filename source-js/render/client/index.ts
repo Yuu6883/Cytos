@@ -47,7 +47,6 @@ import { GetInputs } from '../stores/inputs';
 import { CytosTimings, CytosVersion, CytosInputData } from '../types';
 import { CurrServer } from '../stores/servers';
 
-const MINIMAP_DIM = 1000;
 const CIRCLE_RADIUS = 512;
 const CIRCLE_PADDING = 6;
 const COLOR_SAMPLE_SIZE = 64;
@@ -277,9 +276,6 @@ export default class Client {
     expTex: AtlasTexture[];
     cytTex: AtlasTexture[];
     rockTex: AtlasTexture;
-
-    minimapTex: AtlasTexture;
-    minimapExpand = false;
 
     activeTab = 0;
     spectating = true;
@@ -614,9 +610,6 @@ export default class Client {
             1,
         );
 
-        // TODO
-        // for (const c of this.protocol.lbmm.values()) c.minimapUpdate();
-
         this.updateTarget();
         this.camera.tp
             ? this.teleportCamera()
@@ -658,8 +651,6 @@ export default class Client {
 
             this.gpuBytesUploaded += sub.byteLength;
         }
-
-        // this.renderMinimap();
     }
 
     public checkResolution() {
@@ -986,66 +977,6 @@ export default class Client {
         this.rockTex = this.primStore.add('rock', async () => {
             const bitmap = await this.bitmapFromURL(RockSrc);
             return { success: true, bitmap: bitmap };
-        });
-
-        const MINIMAP_SECTIONS = 5;
-        const MINIMAP_STEP = MINIMAP_DIM / MINIMAP_SECTIONS;
-        const LETTERS = 'ABCDE';
-
-        this.minimapTex = this.primStore.addSync('m', (ctx, w, h) => {
-            ctx.clearRect(0, 0, w, h);
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#b0b0bf';
-            ctx.font = '72px Roboto';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            ctx.fillStyle = '#07070f';
-            ctx.globalAlpha = 0.75;
-            ctx.fillRect(
-                CIRCLE_PADDING,
-                CIRCLE_PADDING,
-                w - CIRCLE_PADDING,
-                h - CIRCLE_PADDING,
-            );
-            ctx.fillStyle = '#605f75';
-
-            for (let i = 0; i < MINIMAP_SECTIONS; i++) {
-                for (let j = 0; j < MINIMAP_SECTIONS; j++) {
-                    ctx.globalAlpha = 1;
-                    ctx.moveTo(
-                        CIRCLE_PADDING + i * MINIMAP_STEP,
-                        CIRCLE_PADDING + j * MINIMAP_STEP,
-                    );
-                    ctx.lineTo(
-                        CIRCLE_PADDING + (i + 1) * MINIMAP_STEP,
-                        CIRCLE_PADDING + j * MINIMAP_STEP,
-                    );
-                    ctx.lineTo(
-                        CIRCLE_PADDING + (i + 1) * MINIMAP_STEP,
-                        CIRCLE_PADDING + (j + 1) * MINIMAP_STEP,
-                    );
-                    ctx.lineTo(
-                        CIRCLE_PADDING + i * MINIMAP_STEP,
-                        CIRCLE_PADDING + (j + 1) * MINIMAP_STEP,
-                    );
-                    ctx.lineTo(
-                        CIRCLE_PADDING + i * MINIMAP_STEP,
-                        CIRCLE_PADDING + j * MINIMAP_STEP,
-                    );
-
-                    ctx.globalAlpha = 0.7;
-                    ctx.fillText(
-                        `${LETTERS[j]}${i + 1}`,
-                        CIRCLE_PADDING + (i + 0.5) * MINIMAP_STEP,
-                        CIRCLE_PADDING + (j + 0.5) * MINIMAP_STEP,
-                    );
-                }
-            }
-            ctx.stroke();
-
-            return { success: true };
         });
 
         this.virusTex = this.primStore.add('virus', async () => {
@@ -1518,244 +1449,6 @@ export default class Client {
         this.bindVAO(this.quadVAO);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
-
-    /*
-    private renderMinimap() {
-        const v = HUDStore.visible.value;
-        if (!v.all || !v.mm) return;
-
-        const gl = this.gl;
-        gl.useProgram(this.spriteProg);
-        this.bindVAO(this.spritesVAO);
-        gl.uniformMatrix4fv(
-            this.getUniform(this.spriteProg, 'p'),
-            false,
-            this.screen as Float32Array,
-        );
-
-        const [uv_x0, uv_y0, uv_x1, uv_y1] = this.minimapTex.uvs;
-        const [C_UV_X0, C_UV_Y0, C_UV_X1, C_UV_Y1] = this.circleTex.uvs;
-        const partyMemberSet = new Set();
-        const memberColor = hexToRGB('#00BFFF');
-
-        if (this.minimapExpand) {
-            const buffer = this.spriteBuffer;
-
-            const resolution = getResolution();
-            const ratio =
-                window.innerWidth / window.innerHeight / (resolution[0] / resolution[1]);
-            const MINIMAP_SCALE = 0.4;
-
-            const minimapCenterX = resolution[0] / 2;
-            const minimapCenterY = resolution[1] / 2;
-            let dim = 0;
-
-            if (ratio > 1) {
-                const hh = (resolution[0] / 2) * (window.innerHeight / window.innerWidth);
-                dim = Math.min(2 * hh, resolution[0]) * MINIMAP_SCALE;
-            } else {
-                const hw = (resolution[1] / 2) * (window.innerWidth / window.innerHeight);
-                dim = Math.min(2 * hw, resolution[1]) * MINIMAP_SCALE;
-            }
-
-            const r = dim * 0.02;
-
-            let i = 54;
-            this.writeVertices(
-                buffer.subarray(0, i),
-                minimapCenterX - dim,
-                minimapCenterY + dim,
-                minimapCenterX + dim,
-                minimapCenterY - dim,
-                uv_x0,
-                uv_y0,
-                uv_x1,
-                uv_y1,
-                1,
-                1,
-                1,
-                1,
-                1,
-            );
-
-            for (const c of this.protocol.lbmm.values()) {
-                if (!c.nr) continue;
-                const x = minimapCenterX + c.cx * dim;
-                const y = minimapCenterY + c.cy * -dim;
-
-                const p = c.player;
-                if (!p || p.invalid || p.isBot) continue;
-
-                this.writeVertices(
-                    buffer.subarray(i, i + 54),
-                    x - r,
-                    y - r,
-                    x + r,
-                    y + r,
-                    C_UV_X0,
-                    C_UV_Y0,
-                    C_UV_X1,
-                    C_UV_Y1,
-                    WHITE[0],
-                    WHITE[1],
-                    WHITE[2],
-                    1,
-                    1,
-                );
-                i += 54;
-            }
-
-            for (const c of this.protocol.lbmm.values()) {
-                if (!c.nr) continue;
-                const p = c.player;
-                if (!p || p.invalid || p.isBot) continue;
-                const player = c.player as Player;
-                if (!player.nameTex.valid) continue;
-
-                const x = minimapCenterX + c.cx * dim;
-                const y = minimapCenterY + c.cy * -dim - 20;
-
-                const nUVS = player.nameTex.uvs;
-                const w = nUVS[4] * r * 0.015;
-                const h = nUVS[5] * r * 0.015;
-                const unit = player.nameTex.unit;
-
-                this.writeVertices(
-                    buffer.subarray(i, i + 54),
-                    x - w,
-                    y + h,
-                    x + w,
-                    y - h,
-                    nUVS[0],
-                    nUVS[1],
-                    nUVS[2],
-                    nUVS[3],
-                    1,
-                    1,
-                    1,
-                    1,
-                    unit,
-                );
-                i += 54;
-            }
-
-            const glBuffer = this.buffers.get('s');
-            gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, buffer.subarray(0, i));
-            gl.drawArrays(gl.TRIANGLES, 0, i / 9);
-        } else {
-            const buffer = this.spriteBuffer;
-
-            const resolution = getResolution();
-            const ratio =
-                window.innerWidth / window.innerHeight / (resolution[0] / resolution[1]);
-            const MINIMAP_SCALE = 0.3;
-
-            let minimapX1 = resolution[0];
-            let minimapY1 = resolution[1];
-            let dim = 0;
-
-            if (ratio > 1) {
-                const hh = (resolution[0] / 2) * (window.innerHeight / window.innerWidth);
-                minimapY1 = resolution[1] / 2 + hh;
-                dim = Math.min(2 * hh, resolution[0]) * MINIMAP_SCALE;
-            } else {
-                const hw = (resolution[1] / 2) * (window.innerWidth / window.innerHeight);
-                minimapX1 = resolution[0] / 2 + hw;
-                dim = Math.min(2 * hw, resolution[1]) * MINIMAP_SCALE;
-            }
-
-            const minimapCenterX = minimapX1 - dim / 2;
-            const minimapCenterY = minimapY1 - dim / 2;
-            const r = dim * 0.02;
-
-            let i = 54;
-            this.writeVertices(
-                buffer.subarray(0, i),
-                minimapX1 - dim,
-                minimapY1,
-                minimapX1,
-                minimapY1 - dim,
-                uv_x0,
-                uv_y0,
-                uv_x1,
-                uv_y1,
-                1,
-                1,
-                1,
-                1,
-                1,
-            );
-
-            for (const c of this.protocol.lbmm.values()) {
-                if (!c.nr) continue;
-                const x = minimapCenterX + c.cx * dim * 0.5;
-                const y = minimapCenterY + c.cy * -dim * 0.5;
-
-                const p = c.player;
-                if (!p || p.invalid || p.isBot) continue;
-                const player = c.player as Player;
-
-                this.writeVertices(
-                    buffer.subarray(i, i + 54),
-                    x - r,
-                    y - r,
-                    x + r,
-                    y + r,
-                    C_UV_X0,
-                    C_UV_Y0,
-                    C_UV_X1,
-                    C_UV_Y1,
-                    WHITE[0],
-                    WHITE[1],
-                    WHITE[2],
-                    1,
-                    1,
-                );
-                i += 54;
-            }
-
-            for (const c of this.protocol.lbmm.values()) {
-                if (!c.nr) continue;
-                const p = c.player;
-                if (!p || p.invalid || p.isBot) continue;
-                const player = c.player as Player;
-                if (!player.nameTex.valid) continue;
-
-                const x = minimapCenterX + c.cx * dim * 0.5;
-                const y = minimapCenterY + c.cy * dim * -0.5 - 15;
-
-                const nUVS = player.nameTex.uvs;
-                const w = nUVS[4] * r * 0.015;
-                const h = nUVS[5] * r * 0.015;
-                const unit = player.nameTex.unit;
-
-                this.writeVertices(
-                    buffer.subarray(i, i + 54),
-                    x - w,
-                    y + h,
-                    x + w,
-                    y - h,
-                    nUVS[0],
-                    nUVS[1],
-                    nUVS[2],
-                    nUVS[3],
-                    1,
-                    1,
-                    1,
-                    1,
-                    unit,
-                );
-                i += 54;
-            }
-
-            const glBuffer = this.buffers.get('s');
-            gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, buffer.subarray(0, i));
-            gl.drawArrays(gl.TRIANGLES, 0, i / 9);
-        }
-    }
-    */
 
     // private renderVidOnCells(cells: Cell[]) {
     //     if (!cells.length) return;
