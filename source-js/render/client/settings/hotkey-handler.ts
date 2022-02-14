@@ -262,6 +262,9 @@ export class HotkeyHandler {
             case 'F1':
                 HUDStore.nerdVisible.set(!HUDStore.nerdVisible.value);
                 break;
+            case 'F4':
+                c.playVid();
+                break;
 
             // minion
             case Hotkeys.split1_minion.v:

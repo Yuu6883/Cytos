@@ -37,6 +37,10 @@ constexpr uint16_t MAX_PLAYERS = ROCK_TYPE - 1;
 static std::mt19937 generator;
 static std::uniform_int_distribution<int> color_offset_dist(0, COLOR_COUNT - 1);
 
+struct Viewport {
+    float l, r, t, b;
+};
+
 struct ClientState {
     vector<RenderCell*> cells;
     vector<RenderCell*> removing;
@@ -90,6 +94,47 @@ struct ClientState {
             cells.push_back(ptr);
             return ptr;
         } else return nullptr;
+    }
+
+    bool update(float lerp, float dt, bool animateFood, bool renderFood, Viewport v) {
+
+        if (cells.size() + removing.size() + freed.size() != MAX_CELL_LIMIT) {
+            return false;
+        }
+
+        // Filter render cells and sort them
+        rendering.clear();
+        rendering.reserve(cells.size() + removing.size());
+
+        for (auto& cell : cells) {
+            if (!renderFood && cell->type == PELLET_TYPE) continue;
+            cell->update(lerp, dt, animateFood);
+            if (cell->cX - cell->cR < v.r &&
+                cell->cX + cell->cR > v.l &&
+                cell->cY - cell->cR < v.t &&
+                cell->cY + cell->cR > v.b) rendering.push_back(cell);
+        }
+        
+        removing.erase(std::remove_if(removing.begin(), removing.end(), 
+            [&](RenderCell*& cell) { 
+            if (cell->removeUpdate(dt)) {
+                freed.push_back(cell); // "free" the cell
+                return true;
+            }
+            if (!renderFood && cell->type == PELLET_TYPE) return false;
+            if (cell->cX - cell->cR < v.r &&
+                cell->cX + cell->cR > v.l &&
+                cell->cY - cell->cR < v.t &&
+                cell->cY + cell->cR > v.b) rendering.push_back(cell);
+            return false; // Keep the cell in the array
+        }), removing.end());
+
+        // Ascend, draw smaller cells first since we are not doing Z-test
+        std::sort(rendering.begin(), rendering.end(), [](auto a, auto b) {
+            return a->cR <= b->cR;
+        });
+
+        return true;
     }
 };
 
@@ -365,10 +410,11 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
 #define viewbox(k) numField(objField(clientObj, "viewbox"), #k)
 
-    auto vT = viewbox(t);
-    auto vB = viewbox(b);
-    auto vL = viewbox(l);
-    auto vR = viewbox(r);
+    Viewport viewport;
+    viewport.t = viewbox(t);
+    viewport.b = viewbox(b);
+    viewport.l = viewbox(l);
+    viewport.r = viewbox(r);
 
     loadUVKey(CIRCLE, circleTex);
     loadUVKey(RING, ringTex);
@@ -410,7 +456,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
     const auto massMode   = field(objField(settings, "renderMass"), "v")->Int32Value(ctx).ToChecked();
     const bool longMass = massMode == 2;
 
-    auto textMin = std::min(vR - vL, vT - vB) * 0.03f;
+    auto textMin = std::min(viewport.r - viewport.l, viewport.t - viewport.b) * 0.03f;
 
     constexpr float MASS_GAP = 0.85f;
     constexpr float MASS_SCALE_X = 0.23f;
@@ -447,50 +493,14 @@ void render(const FunctionCallbackInfo<Value>& args) {
     colorField(foodColor);
     colorField(ejectColor);
 
-    auto& cells = state->cells;
-    auto& freed = state->freed;
-    auto& removing = state->removing;
-    auto& rendering = state->rendering;
-
-    if (cells.size() + removing.size() + freed.size() != MAX_CELL_LIMIT) {
+    if (!state->update(lerp, dt, animateFood, renderFood, viewport)) {
         iso->ThrowException(Exception::RangeError(
-            String::NewFromUtf8Literal(iso, "Cell pool integrity check failed")));
+                String::NewFromUtf8Literal(iso, "Cell pool integrity check failed")));
         return;
     }
 
-    // Filter render cells and sort them
-    rendering.clear();
-    rendering.reserve(cells.size() + removing.size());
-
-    for (auto& cell : cells) {
-        if (!renderFood && cell->type == PELLET_TYPE) continue;
-        cell->update(lerp, dt, animateFood);
-        if (cell->cX - cell->cR < vR &&
-            cell->cX + cell->cR > vL &&
-            cell->cY - cell->cR < vT &&
-            cell->cY + cell->cR > vB) rendering.push_back(cell);
-    }
-    
-    removing.erase(std::remove_if(removing.begin(), removing.end(), 
-        [&](RenderCell*& cell) { 
-        if (cell->removeUpdate(dt)) {
-            freed.push_back(cell); // "free" the cell
-            return true;
-        }
-        if (!renderFood && cell->type == PELLET_TYPE) return false;
-        if (cell->cX - cell->cR < vR &&
-            cell->cX + cell->cR > vL &&
-            cell->cY - cell->cR < vT &&
-            cell->cY + cell->cR > vB) rendering.push_back(cell);
-        return false; // Keep the cell in the array
-    }), removing.end());
-
-    // Ascend, draw smaller cells first since we are not doing Z-test
-    std::sort(rendering.begin(), rendering.end(), [](auto a, auto b) {
-        return a->cR <= b->cR;
-    });
-
-    clientObj->Set(ctx, String::NewFromUtf8Literal(iso, "rendercells"), Number::New(iso, rendering.size()));
+    clientObj->Set(ctx, String::NewFromUtf8Literal(iso, "rendercells"), 
+        Number::New(iso, state->rendering.size()));
 
     constexpr float CIRCLE_RADIUS = 512;
     constexpr float CIRCLE_PADDING = 6;
@@ -498,11 +508,10 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
     char mass_buffer[64];
 
-    // fprintf(stderr, "Rendering %llu cells, (%llu, %llu)\n", rendering.size(), cells.size(), removing.size());
     auto start = uv_hrtime();
 
     size_t write_index = 0;
-    for (auto cell : rendering) {
+    for (auto cell : state->rendering) {
         const auto& type = cell->type;
         const auto& x = cell->cX;
         const auto& y = cell->cY;
@@ -822,6 +831,49 @@ void parse(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(Number::New(iso, cells.size()));
 }
 
+void renderV(const FunctionCallbackInfo<Value>& args) {
+    auto state = static_cast<ClientState*>(Local<External>::Cast(args.Data())->Value());
+    auto iso = args.GetIsolate();
+    auto ctx = iso->GetCurrentContext();
+
+    auto clientObj = args[0].As<Object>();
+    auto floatArr = fieldTyped(clientObj, "spriteBuffer", Float32Array);
+    auto v8buf = floatArr->Buffer();
+    auto nodeBuffer = node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength()).ToLocalChecked();
+    auto buffer = reinterpret_cast<float*>(node::Buffer::Data(nodeBuffer.As<Object>()));
+
+    auto lerp     = (float) args[1]->NumberValue(ctx).ToChecked();
+    auto dt       = (float) args[2]->NumberValue(ctx).ToChecked();
+    auto modifier = (float) args[3]->NumberValue(ctx).ToChecked();
+
+    Viewport viewport;
+    viewport.t = viewbox(t);
+    viewport.b = viewbox(b);
+    viewport.l = viewbox(l);
+    viewport.r = viewbox(r);
+
+    if (!state->update(lerp, dt, true, true, viewport)) {
+        iso->ThrowException(Exception::RangeError(
+                String::NewFromUtf8Literal(iso, "Cell pool integrity check failed")));
+        return;
+    }
+
+    size_t write_index = 0;
+    for (auto cell : state->rendering) {
+        const auto& type = cell->type;
+        const auto& x = cell->cX;
+        const auto& y = cell->cY;
+        const auto& color = cell->color;
+        const auto& alpha = cell->alpha;
+
+        const float r = cell->cR * 1.052f * modifier;
+        writeVertices(buffer, write_index, X0Y0X1Y1, 0, 0, 1, 1, color,
+            alpha * (type == DEAD_TYPE ? 0.5f : 1.f), 0);
+    }
+
+    args.GetReturnValue().Set(Number::New(iso, write_index));
+}
+
 #undef fieldTyped
 #undef intField
 #undef numField
@@ -911,4 +963,5 @@ NODE_MODULE_INITIALIZER(Local<Object> exports, Local<Value> module, Local<Contex
     exportFunc(isolate, exports, ctx, "getCellColor", getCellColor);
     exportFunc(isolate, exports, ctx, "clear", clear);
     exportFunc(isolate, exports, ctx, "getPID", getPID);
+    exportFunc(isolate, exports, ctx, "renderV", renderV);
 }

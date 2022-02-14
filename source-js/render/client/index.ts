@@ -24,6 +24,7 @@ import CYTSrc2 from '../img/cyt2.webp';
 import CYTSrc3 from '../img/cyt3.webp';
 import CYTSrc4 from '../img/cyt4.webp';
 import RockSrc from '../img/rock.png';
+import BASrc from '../img/ba.mp4';
 // import IndicatorSrc from '../img/indicator.webp';
 
 // Shaders
@@ -33,7 +34,6 @@ import SimpleVert from './shaders/simple_vert.glsl';
 import TrollFrag from './shaders/troll_frag.glsl';
 import MapFrag from './shaders/map_frag.glsl';
 import QuadVert from './shaders/quad_vert.glsl';
-// import OrbFrag from './shaders/orb_frag.glsl';
 import DiscoFrag from './shaders/disco_frag.glsl';
 import { makeProg } from './util';
 import { AtlasTexture, TextureStore } from './cell/textures';
@@ -50,13 +50,13 @@ import { CurrServer } from '../stores/servers';
 const CIRCLE_RADIUS = 512;
 const CIRCLE_PADDING = 6;
 const COLOR_SAMPLE_SIZE = 64;
-const ORB_DIM = 800;
 
 const QUAD_VERT = [-1, -1, +1, -1, -1, +1, +1, -1, -1, +1, +1, +1];
 
 interface RenderModuleAddon {
     postInit(client: Client): void;
     render(client: Client, lerp: number, dt: number, debug: boolean): number;
+    renderV(client: Client, lerp: number, dt: number, modifier: number): number;
     parse(client: Client, buf: ArrayBuffer): number;
     getCellColor(index: number): [number, number, number];
     clear(): void;
@@ -301,7 +301,6 @@ export default class Client {
     readonly debugOutput = {};
 
     mapProg: WebGLProgram;
-    orbProg: WebGLProgram;
     spriteProg: WebGLProgram;
     vidProg: WebGLProgram;
     discoProg: WebGLProgram;
@@ -615,14 +614,47 @@ export default class Client {
             ? this.teleportCamera()
             : this.updateCamera(dt / this.settings.drawDelay.v);
         this.checkResolution();
-        // this.renderOrb();
         this.renderMap();
 
-        if (this.visualizer?.enabled && this.vidElem) {
-            // this.renderVidOnCells(rc);
-        } else {
-            const gl = this.gl;
+        const gl = this.gl;
 
+        if (this.visualizer?.enabled && this.vidElem) {
+            gl.useProgram(this.vidProg);
+            this.bindVAO(this.spritesVAO);
+            gl.uniformMatrix4fv(
+                this.getUniform(this.vidProg, 'p'),
+                false,
+                this.proj as Float32Array,
+            );
+
+            if (this.vidElem.readyState >= 2) {
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, this.vidTex);
+                gl.texSubImage2D(
+                    gl.TEXTURE_2D,
+                    0,
+                    0,
+                    0,
+                    gl.RGBA,
+                    gl.UNSIGNED_BYTE,
+                    this.vidElem,
+                );
+            }
+
+            const modifier = Math.max(0.96, 1 + 0.5 * (this.visualizer.amp - 0.1));
+
+            const len = RenderModule.renderV(this, lerp, dt, modifier);
+
+            const glBuffer = this.buffers.get('s');
+            const sub = this.spriteBuffer.subarray(0, len);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
+            gl.drawArrays(this.gl.TRIANGLES, 0, len / 9);
+
+            this.gpuBytesUploaded +=
+                sub.byteLength + this.vidElem.videoWidth * this.vidElem.videoHeight * 4;
+        } else {
             gl.useProgram(this.spriteProg);
             this.bindVAO(this.spritesVAO);
             gl.uniformMatrix4fv(
@@ -859,7 +891,6 @@ export default class Client {
         this.buffers.clear();
         this.uniforms = new WeakMap();
 
-        // this.prepOrbProg();
         this.prepMapProg(this.gl);
         this.prepDiscoProg(this.gl);
         this.prepVidProg(this.gl);
@@ -1080,63 +1111,14 @@ export default class Client {
         gl.vertexAttribPointer(loc4, 1, gl.FLOAT, false, 36, 32);
     }
 
+    public playVid() {
+        this.vidElem.src = BASrc;
+    }
+
     private prepVidProg(gl: WebGLRenderingContext) {
         this.vidProg = makeProg(gl, SpriteVert, TrollFrag);
         gl.useProgram(this.vidProg);
         this.loadUniform(this.vidProg, 'p');
-    }
-
-    private prepOrbProg() {
-        /*
-        const gl = this.gl;
-        const prog = (this.orbProg = makeProg(gl, QuadVert, OrbFrag));
-        this.gl.useProgram(this.orbProg);
-        this.loadUniform(this.orbProg, 'p', 'time');
-        this.orbVAO = this.vaoExt.createVertexArrayOES();
-        this.vaoExt.bindVertexArrayOES(this.orbVAO);
-        const buffer = this.allocBuffer('q');
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array([-1, -1, +1, -1, -1, +1, +1, -1, -1, +1, +1, +1]),
-            gl.STATIC_DRAW,
-        );
-        const loc1 = gl.getAttribLocation(prog, 'p');
-        gl.enableVertexAttribArray(loc1);
-        gl.vertexAttribPointer(loc1, 2, gl.FLOAT, false, 0, 0);
-        this.extTex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.extTex);
-        {
-            // define size and format of level 0
-            const level = 0;
-            const internalFormat = gl.RGBA;
-            const border = 0;
-            const format = gl.RGBA;
-            gl.texImage2D(
-                gl.TEXTURE_2D,
-                level,
-                internalFormat,
-                ORB_DIM,
-                ORB_DIM,
-                border,
-                format,
-                gl.UNSIGNED_BYTE,
-                null,
-            );
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        }
-        const fb = this.allocFrameBuffers('o')[0];
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,
-            gl.COLOR_ATTACHMENT0,
-            gl.TEXTURE_2D,
-            this.extTex,
-            0,
-        );
-        */
     }
 
     private prepMapProg(gl: WebGLRenderingContext) {
@@ -1252,11 +1234,6 @@ export default class Client {
 
         const [r, g, b] = hexToRGB(player.color).map(i => i * 255);
         const border = /border: (none|#[0-9a-f]{6})/i.exec(player.color)?.[1];
-        const gradient = /gradient: (\d+)deg (#[0-9a-f]{6}) (#[0-9a-f]{6})/i
-            .exec(player.color)
-            ?.slice(1, 4);
-        const glow = /glow: (#[0-9a-f]{6})/i.exec(player.color)?.[1];
-
         const color = `rgb(${~~r},${~~g},${~~b})`;
 
         player.nameTex = this.nameStore.addSync(
@@ -1389,23 +1366,6 @@ export default class Client {
         this.stats.score = this.scores[0] + this.scores[1];
     }
 
-    private renderOrb() {
-        /*
-        const gl = this.gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.get('o')[0]);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.extTex);
-        gl.viewport(0, 0, ORB_DIM, ORB_DIM);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.useProgram(this.orbProg);
-        gl.uniform1f(this.getUniform(this.orbProg, 'time'), this.lastRAF / 1000);
-        this.vaoExt.bindVertexArrayOES(this.quadVAO);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        */
-    }
-
     private renderMap() {
         const gl = this.gl;
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -1449,97 +1409,6 @@ export default class Client {
         this.bindVAO(this.quadVAO);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
-
-    // private renderVidOnCells(cells: Cell[]) {
-    //     if (!cells.length) return;
-
-    //     const gl = this.gl;
-    //     gl.useProgram(this.vidProg);
-    //     this.bindVAO(this.spritesVAO);
-    //     gl.uniformMatrix4fv(
-    //         this.getUniform(this.vidProg, 'p'),
-    //         false,
-    //         this.proj as Float32Array,
-    //     );
-
-    //     if (this.vidElem.readyState >= 2) {
-    //         gl.activeTexture(gl.TEXTURE0);
-    //         gl.bindTexture(gl.TEXTURE_2D, this.vidTex);
-    //         gl.texSubImage2D(
-    //             gl.TEXTURE_2D,
-    //             0,
-    //             0,
-    //             0,
-    //             gl.RGBA,
-    //             gl.UNSIGNED_BYTE,
-    //             this.vidElem,
-    //         );
-    //     }
-
-    //     const buffer = this.spriteBuffer;
-    //     const modifier = this.visualizer?.enabled
-    //         ? Math.max(0.96, 1 + 0.5 * (this.visualizer.amp - 0.1))
-    //         : 1;
-
-    //     let i = 0;
-    //     for (const index in cells) {
-    //         const c = cells[index];
-
-    //         const x = c.cx;
-    //         const y = c.cy;
-    //         const color = c.color.slice(0);
-    //         const a = c.alpha;
-
-    //         const sub = buffer.subarray(i, i + 54);
-
-    //         const r = c.cr * 1.052 * modifier;
-
-    //         // Dead cell
-    //         if (c.type === DEAD_TYPE) {
-    //             this.writeVertices(
-    //                 sub,
-    //                 x - r,
-    //                 y - r,
-    //                 x + r,
-    //                 y + r,
-    //                 0,
-    //                 0,
-    //                 1,
-    //                 1,
-    //                 color[0],
-    //                 color[1],
-    //                 color[2],
-    //                 0.5 * a,
-    //                 0,
-    //             );
-    //             // Everything else
-    //         } else {
-    //             this.writeVertices(
-    //                 sub,
-    //                 x - r,
-    //                 y - r,
-    //                 x + r,
-    //                 y + r,
-    //                 0,
-    //                 0,
-    //                 1,
-    //                 1,
-    //                 color[0],
-    //                 color[1],
-    //                 color[2],
-    //                 a,
-    //                 0,
-    //             );
-    //         }
-
-    //         i += 54;
-    //     }
-
-    //     const glBuffer = this.buffers.get('s');
-    //     gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-    //     gl.bufferSubData(gl.ARRAY_BUFFER, 0, buffer.subarray(0, i));
-    //     gl.drawArrays(gl.TRIANGLES, 0, i / 9);
-    // }
 
     public static sampleColor(img: ImageBitmap | HTMLImageElement, color: string) {
         const ctx = this.samplerCtx;
