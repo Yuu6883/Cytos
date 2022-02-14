@@ -34,6 +34,9 @@ constexpr uint16_t MAX_PLAYERS = ROCK_TYPE - 1;
 
 #define MAX_CELL_LIMIT 131072
 
+static std::mt19937 generator;
+static std::uniform_int_distribution<int> color_offset_dist(0, COLOR_COUNT - 1);
+
 struct ClientState {
     vector<RenderCell*> cells;
     vector<RenderCell*> removing;
@@ -45,13 +48,16 @@ struct ClientState {
     PlayerData players[MAX_PLAYERS];
     BitmapTextData charText[256];
 
+    int color_offset;
+
     ClientState() {
         memset(&charText, 0, sizeof(charText));
-
         init();
     }
 
     void init() {
+        color_offset = color_offset_dist(generator);
+
         // Not neccesary but in case
         memset(&pool,     0, sizeof(pool));
         memset(&players,  0, sizeof(players));
@@ -563,7 +569,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
                             UVs(RING), autoTheme ? p.skinTheme : activeColor, alpha, 1);
                     } else {
                         writeVertices(buffer, write_index, X0Y0X1Y1,
-                            UVs(RING), autoTheme ? EJECTS_COLORS[pid % COLOR_COUNT] : activeColor, alpha, 1);
+                            UVs(RING), autoTheme ? EJECTS_COLORS[(pid + state->color_offset) % COLOR_COUNT] : activeColor, alpha, 1);
                     }
                 } else if (showInactive && pid == inactivePID) {
                     writeVertices(buffer, write_index, X0Y0X1Y1,
@@ -800,7 +806,7 @@ void parse(const FunctionCallbackInfo<Value>& args) {
         auto x = 2 * r.read<int16_t>();
         auto y = 2 * r.read<int16_t>();
         auto R = 2 * r.read<uint16_t>();
-        cell->init(type, x, y, R);
+        cell->init(type, x, y, R, state->color_offset);
     }
 
     if (error) {
@@ -829,12 +835,13 @@ void parse(const FunctionCallbackInfo<Value>& args) {
 #undef viewbox
 
 void getCellColor(const FunctionCallbackInfo<Value>& args) {
+    auto state = static_cast<ClientState*>(Local<External>::Cast(args.Data())->Value());
     auto iso = args.GetIsolate();
     auto ctx = iso->GetCurrentContext();
 
     auto id = args[0]->Int32Value(ctx).ToChecked();
     
-    auto color = CELL_COLORS[std::max(0, id) % COLOR_COUNT];
+    auto color = CELL_COLORS[std::max(0, id + state->color_offset) % COLOR_COUNT];
 
     auto obj = Array::New(iso, 3);
 

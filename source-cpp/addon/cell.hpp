@@ -36,7 +36,7 @@ struct RenderCell {
 
     RenderCell() {};
 
-    void init(uint16_t type, int32_t x, int32_t y, int32_t r) {
+    void init(uint16_t type, int32_t x, int32_t y, int32_t r, int color_offset) {
 
         this->type = type;
         oX = cX = nX = x;
@@ -62,12 +62,12 @@ struct RenderCell {
             color = DEAD_COLOR;
         } else if (type & EJECT_BIT) {
             auto pid = type & PELLET_TYPE;
-            color = EJECTS_COLORS[pid % COLOR_COUNT];
+            color = EJECTS_COLORS[(pid + color_offset) % COLOR_COUNT];
             
             alpha = 0;
             flags = FADE_IN;
         } else if (type < ROCK_TYPE) {
-            color = CELL_COLORS[type % COLOR_COUNT];
+            color = CELL_COLORS[(type + color_offset) % COLOR_COUNT];
         } else {
             color =  { 1, 1, 1 };
         }
