@@ -91,9 +91,36 @@ Cytos.onInfo(({ event, id, pid0, pid1 }) => {
     }
 });
 
-Cytos.setGameMode("omega");
+Cytos.setGameMode("ultra");
 
 setInterval(() => Cytos.getTimings(), 1000);
+
+setTimeout(() => {
+    Cytos.setInput({
+        spectate: false,
+        activeTab: 0,
+        data: [
+            {
+                line: false,
+                spawn: true,
+                macro: false,
+                splits: 0,
+                ejects: 0,
+                mouseX: 0,
+                mouseY: 0,
+            },
+            {
+                line: false,
+                spawn: false,
+                macro: false,
+                splits: 0,
+                ejects: 0,
+                mouseX: 0,
+                mouseY: 0,
+            },
+        ],
+    });
+}, 1000);
 
 // Test save & restore
 // setTimeout(() => {

@@ -116,9 +116,10 @@ void Player::syncInput() {
     // Read from input into control's fields
     for (int tab = 0; tab <= 1; tab++) {
         auto c = control;
-
+        
+        // Tab 2
         if (tab) {
-            if (control == c && dual) {
+            if (control == c && dual && dual->control) {
                 c = dual->control;
             } else {
                 inputs[tab] = Input();

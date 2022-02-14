@@ -605,11 +605,12 @@ public:
                 }
             }
 
-            // If this node split already
-            if (curr->branches || curr->level > minLevel) {
-                for (auto other : curr->items) {
-                    if (&cell != other) cb(other, curr->level);
-                }
+            // If this node split already and is less than the level,
+            // this node can not contain anything with r greater than current querying cell r
+            if (curr->branches && curr->level < minLevel) continue;
+
+            for (auto other : curr->items) {
+                if (&cell != other) cb(other, curr->level);
             }
         }
     }
