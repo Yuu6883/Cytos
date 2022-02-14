@@ -69,3 +69,10 @@ npm run build
 cp ../build/Release/*.node build/
 npm start
 ```
+
+# Additional Features
+* Save & Restore: hit `CTRL S` to save a server state into a buffer stored in IndexedDB and hit `ALT X` to restore from it (per game mode)
+* Extensive timing & metrics: hit `F1` to toggle the profiling panel.
+* Hit `F4` for the ultimate easter egg:
+
+![image](https://user-images.githubusercontent.com/38842891/153817035-8b6d7228-67e3-409d-9859-1f32659a2cec.png)
