@@ -1,14 +1,14 @@
+#include "player.hpp"
+
 #include <bitset>
 
 #include "../misc/writer.hpp"
 #include "../physics/engine.hpp"
-
 #include "server.hpp"
-#include "player.hpp"
 
 using std::bitset;
 
-#define MAX_CELL_LIMIT 131072
+#define MAX_CELL_LIMIT 262144
 
 static bitset<MAX_CELL_LIMIT> LAST_VISIBLE;
 static bitset<MAX_CELL_LIMIT> CURR_VISIBLE;
@@ -19,7 +19,7 @@ Player::Player(Server* server) : GameHandle(server, "player") {
     dual = new DualHandle(this);
 }
 
-void Player::setEngine(Engine* engine) {    
+void Player::setEngine(Engine* engine) {
     this->engine = engine;
 
     control = nullptr;
@@ -66,7 +66,7 @@ void Player::spec(uint16_t target) {
         spectate = nullptr;
         return;
     }
-    
+
     if (target == 65535) {
         spectate = engine->biggest;
         return;
@@ -116,7 +116,7 @@ void Player::syncInput() {
     // Read from input into control's fields
     for (int tab = 0; tab <= 1; tab++) {
         auto c = control;
-        
+
         // Tab 2
         if (tab) {
             if (control == c && dual && dual->control) {
@@ -157,9 +157,7 @@ void Player::syncInput() {
     }
 }
 
-inline uint8_t getFlags(Control*& c) {
-    return c->alive | (c->lineLocked << 1);
-}
+inline uint8_t getFlags(Control*& c) { return c->alive | (c->lineLocked << 1); }
 
 void Player::onTick() {
     if (engine->dualEnabled) {
@@ -182,8 +180,8 @@ void Player::onTick() {
     Control* c1 = control;
     Control* c2 = dual ? dual->control : nullptr;
 
-    float factor = 1.f;
-    
+    cell_cord_prec factor = 1.f;
+
     if (spectate) {
         c1 = spectate->control;
         if (spectate->dual) c2 = spectate->dual->control;
@@ -229,43 +227,44 @@ void Player::onTick() {
     constexpr cell_cord_prec SKIP_PELLET_VIEW = 25000.;
 
     for (auto& aabb : viewports) {
-        bool skipPellet = aabb.getArea() > (SKIP_PELLET_VIEW * SKIP_PELLET_VIEW);
+        bool skipPellet =
+            aabb.getArea() > (SKIP_PELLET_VIEW * SKIP_PELLET_VIEW);
 
-        engine->queryGridEV(aabb, [&] (Cell* c) {
+        engine->queryGridEV(aabb, [&](Cell* c) {
             if (!c || !c->age) return;
             cell_id_t id = engine->cell_id(c);
-            if (CURR_VISIBLE[id]) return; // Bit already set
+            if (CURR_VISIBLE[id]) return;  // Bit already set
             CURR_VISIBLE[id] = true;
-            if (LAST_VISIBLE[id]) return; // Not seen already
+            if (LAST_VISIBLE[id]) return;  // Not seen already
             NEW_CELL_CACHE.push_back(CellCache(id, c));
         });
 
         if (!skipPellet) {
-            engine->queryGridPL(aabb, [&] (Cell* c) {
+            engine->queryGridPL(aabb, [&](Cell* c) {
                 if (!c) return;
                 cell_id_t id = engine->cell_id(c);
-                if (CURR_VISIBLE[id]) return; // Bit already set
+                if (CURR_VISIBLE[id]) return;  // Bit already set
                 CURR_VISIBLE[id] = true;
-                if (LAST_VISIBLE[id]) return; // Not seen already
-                NEW_CELL_CACHE.push_back(CellCache(id, c));        
+                if (LAST_VISIBLE[id]) return;  // Not seen already
+                NEW_CELL_CACHE.push_back(CellCache(id, c));
             });
         }
 
         if (canEatPerk()) {
-            engine->queryTree(aabb, [&] (auto c) {
+            engine->queryTree(aabb, [&](auto c) {
                 cell_id_t id = engine->cell_id(c);
-                if (CURR_VISIBLE[id]) return; // Bit already set
+                if (CURR_VISIBLE[id]) return;  // Bit already set
                 CURR_VISIBLE[id] = true;
-                if (LAST_VISIBLE[id]) return; // Not seen already
+                if (LAST_VISIBLE[id]) return;  // Not seen already
                 NEW_CELL_CACHE.push_back(CellCache(id, c));
             });
         } else {
-            engine->queryTree(aabb, [&] (auto c) {
+            engine->queryTree(aabb, [&](auto c) {
                 cell_id_t id = engine->cell_id(c);
-                if (CURR_VISIBLE[id]) return; // Bit already set
+                if (CURR_VISIBLE[id]) return;  // Bit already set
                 if ((c->type == EXP_TYPE || c->type == CYT_TYPE)) return;
                 CURR_VISIBLE[id] = true;
-                if (LAST_VISIBLE[id]) return; // Not seen already
+                if (LAST_VISIBLE[id]) return;  // Not seen already
                 NEW_CELL_CACHE.push_back(CellCache(id, c));
             });
         }
@@ -290,9 +289,9 @@ void Player::onTick() {
     w.write<float>(map.hw);
     w.write<float>(map.hh);
 
-    constexpr uint8_t UPD  = 0x01 << 6;
-    constexpr uint8_t EAT  = 0x02 << 6;
-    constexpr uint8_t ADD  = 0x03 << 6;
+    constexpr uint8_t UPD = 0x01 << 6;
+    constexpr uint8_t EAT = 0x02 << 6;
+    constexpr uint8_t ADD = 0x03 << 6;
 
     constexpr uint8_t DX_P = 0x01 << 4;
     constexpr uint8_t DX_N = 0x02 << 4;
@@ -306,24 +305,23 @@ void Player::onTick() {
     constexpr uint8_t DR_N = 0x02;
     constexpr uint8_t RRRR = 0x03;
 
-    constexpr cell_cord_prec int16range  = (1 << 15) - 1;
+    constexpr cell_cord_prec int16range = (1 << 15) - 1;
     constexpr cell_cord_prec uint16range = (1 << 16) - 1;
-    
+
     memset(ID_LOOKUP, 0, sizeof(ID_LOOKUP));
 
     auto cache_size = cache.size();
-    for (int i = 0; i < cache_size; i++)
-        ID_LOOKUP[cache[i].id] = i;
+    for (int i = 0; i < cache_size; i++) ID_LOOKUP[cache[i].id] = i;
 
     w.write<uint16_t>(cache_size);
 
     int w_id = 0;
-    // Write 
+    // Write
     for (int i = 0; i < cache_size; i++) {
         auto& item = cache[i];
         auto out = &cache[i];
         uint8_t& flags = w.ref<uint8_t>(0);
-        
+
         // Move the item
         if (w_id < i) {
             cache[w_id] = item;
@@ -331,21 +329,25 @@ void Player::onTick() {
         }
 
         // Cell is eaten
-        if (cells[out->id].flag & REMOVE_BIT &&
-            cells[out->id].eatenByID &&
+        if (cells[out->id].flag & REMOVE_BIT && cells[out->id].eatenByID &&
             ID_LOOKUP[out->id]) {
             flags |= EAT;
             w.write<uint16_t>(ID_LOOKUP[out->id]);
         } else if (cells[out->id].flag & EXIST_BIT &&
-            cells[out->id].type == out->type &&
-            CURR_VISIBLE[out->id]) {
+                   cells[out->id].type == out->type && CURR_VISIBLE[out->id]) {
             w_id++;
             flags |= UPD;
 
             // Delta compression
-            const int16_t cx = std::clamp(cells[out->id].x * cell_cord_prec(0.5), -int16range, int16range);
-            const int16_t cy = std::clamp(cells[out->id].y * cell_cord_prec(0.5), -int16range, int16range);
-            const uint16_t cr = std::clamp(cells[out->id].r * cell_cord_prec(0.5), cell_cord_prec(0), uint16range);
+            const int16_t cx =
+                std::clamp(cells[out->id].x * cell_cord_prec(0.5), -int16range,
+                           int16range);
+            const int16_t cy =
+                std::clamp(cells[out->id].y * cell_cord_prec(0.5), -int16range,
+                           int16range);
+            const uint16_t cr =
+                std::clamp(cells[out->id].r * cell_cord_prec(0.5),
+                           cell_cord_prec(0), uint16range);
 
             int16_t dx = cx - out->x;
             out->x = cx;

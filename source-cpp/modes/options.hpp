@@ -2,6 +2,7 @@
 
 #include <cinttypes>
 #include <string_view>
+
 #include "../physics/cell.hpp"
 
 struct BotAI {
@@ -43,6 +44,7 @@ struct OPT {
     uint8_t QUADTREE_MAX_ITEMS = 16;
 
     float PERK_INTERVAL = 15;
+    float PERK_DYNAMIC_MAX_AGE = 5000.f;  // 30 seconds before despawn
 
     float MIN_PERK_SIZE = 10000.f;
     size_t MAX_CYT_CELLS = 1;
@@ -90,11 +92,14 @@ struct OPT {
     cell_cord_prec PLAYER_AUTOSPLIT_SIZE = 1500.f;
     float PLAYER_AUTOSPLIT_DELAY = 100.f;
     uint32_t PLAYER_MAX_CELLS = 16;
+
+    cell_cord_prec PLAYER_INIT_SPAWN_SIZE = 0.f;
     cell_cord_prec PLAYER_SPAWN_SIZE = 500.f;
     cell_cord_prec PLAYER_SPLIT_BOOST = 800.f;
     cell_cord_prec PLAYER_SPLIT_DIST = 40.f;
     cell_cord_prec PLAYER_SPLIT_CAP_T1 = 50000.f;
     cell_cord_prec PLAYER_SPLIT_CAP_T2 = 20000.f;
+    cell_cord_prec PLAYER_SPLIT_ADD_AGE = 0.f;
     cell_cord_prec PLAYER_MAX_BOOST = 1000.f;
     cell_cord_prec PLAYER_MIN_SPLIT_SIZE = 60.f;
     cell_cord_prec PLAYER_MIN_EJECT_SIZE = 60.f;
@@ -114,7 +119,7 @@ struct OPT {
     cell_cord_prec STATIC_DECAY = 1.;
     cell_cord_prec GLOBAL_DECAY = 1.;
     cell_cord_prec DECAY_MIN = 1000.;
-    
+
     cell_cord_prec ANTI_CAMP_TIME = 0.;
     cell_cord_prec ANTI_CAMP_MASS = 0.;
     cell_cord_prec ANTI_CAMP_MULT = 0.;
@@ -136,12 +141,14 @@ struct OPT {
     cell_cord_prec EAT_MULT = 1.140175425099138;
     cell_cord_prec EX_FAST_BOOST_R = 0;
     cell_cord_prec EX_FAST_MERGE_MASS = 0;
+    cell_cord_prec COLLI_RATIO = 0;
 
     const BotAI* AI = &default_ai;
 };
 
 constexpr OPT default_opt;
 
+#include "benchmark/omega.hpp"
 #include "ffa.hpp"
 #include "instant.hpp"
 #include "mega.hpp"
@@ -149,15 +156,10 @@ constexpr OPT default_opt;
 #include "sf.hpp"
 #include "ultra.hpp"
 
-#include "benchmark/omega.hpp"
-
 #ifndef GLOBAL_ENGINE_FLAGS
-    #define GLOBAL_ENGINE_FLAGS 0
+#define GLOBAL_ENGINE_FLAGS 0
 #endif
 
 #ifndef ENGINES
-    #define ENGINES 1
+#define ENGINES 1
 #endif
-
-
-

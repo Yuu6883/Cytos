@@ -91,9 +91,12 @@ Cytos.onInfo(({ event, id, pid0, pid1 }) => {
     }
 });
 
-Cytos.setGameMode("ultra");
+Cytos.setGameMode("omega");
 
-setInterval(() => Cytos.getTimings(), 1000);
+setInterval(() => {
+    const timings = Cytos.getTimings();
+    console.log(timings);
+}, 1000);
 
 setTimeout(() => {
     Cytos.setInput({

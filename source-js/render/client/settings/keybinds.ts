@@ -15,6 +15,8 @@ const s = {
     switchTab: new S('switchTab', 'TAB'),
     respawn: new S('respawn', 'N'),
     lineSplit: new S('lineSplit', 'F'),
+    _8xline: new S('x8line', ''),
+    _16xline: new S('x16line', ''),
     toggleSkin: new S('toggleSkin', ''),
     toggleName: new S('toggleName', ''),
     toggleMass: new S('toggleMass', ''),
@@ -37,6 +39,8 @@ const s = {
     splitA_minion: new S('splitA_minion', ''), // split all
     respawn_minion: new S('respawn_minion', ''),
     lineSplit_minion: new S('lineSplit_minion', ''),
+    _8xline_minion: new S('x8line_minion', ''),
+    _16xline_minion: new S('x16line_minion', ''),
     minionMode: new S('minionMode', 0),
     persistentMacro: new S('persistentMacro', true),
     autoUnlockLine: new S('autoUnlockLine', false),
@@ -100,6 +104,14 @@ export const HotkeyCategory: { [key: string]: Setting<number | boolean | string>
         new Setting(s.lineSplit, 5, {
             text: 'Line Lock',
             minion: s.lineSplit_minion,
+        }),
+        new Setting(s._8xline, 5, {
+            text: '8x Line Split',
+            minion: s._8xline_minion,
+        }),
+        new Setting(s._16xline, 5, {
+            text: '16x Line Split',
+            minion: s._16xline_minion,
         }),
         new Setting(s.autoUnlockLine, 0, {
             text: 'Auto Line Unlock',

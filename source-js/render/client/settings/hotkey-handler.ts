@@ -225,6 +225,12 @@ export class HotkeyHandler {
             case Hotkeys.lineSplit.v:
                 p.line = true;
                 break;
+            case Hotkeys._8xline.v:
+                p.new_line(3);
+                break;
+            case Hotkeys._16xline.v:
+                p.new_line(4);
+                break;
             case Hotkeys.toggleSkin.v:
                 const skinOP = SettingList.find(o => o.ref.k === 'renderSkin');
                 skinOP.v = !skinOP.v;
@@ -302,6 +308,12 @@ export class HotkeyHandler {
                 break;
             case Hotkeys.lineSplit_minion.v:
                 p.minion_line = true;
+                break;
+            case Hotkeys._8xline_minion.v:
+                p.new_line_minion(3);
+                break;
+            case Hotkeys._16xline_minion.v:
+                p.new_line_minion(4);
                 break;
         }
     }

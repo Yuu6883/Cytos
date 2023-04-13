@@ -1,32 +1,32 @@
 #pragma once
 
-#include <list>
-#include <vector>
-#include <unordered_set>
-#include <unordered_map>
-#include <random>
 #include <functional>
+#include <list>
+#include <random>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #define NOMINMAX
 #include <uv.h>
 
-using std::pair;
-using std::list;
-using std::vector;
 using std::function;
-using std::unordered_set;
+using std::list;
+using std::pair;
 using std::unordered_map;
+using std::unordered_set;
+using std::vector;
 
-#include "cell.hpp"
-#include "quadtree.hpp"
-#include "grid.hpp"
-#include "../modes/options.hpp"
-
-#include <mutex>
 #include <atomic>
+#include <mutex>
 
-using std::mutex;
+#include "../modes/options.hpp"
+#include "cell.hpp"
+#include "grid.hpp"
+#include "quadtree.hpp"
+
 using std::atomic;
+using std::mutex;
 using std::unique_ptr;
 
 #include <chrono>
@@ -42,8 +42,9 @@ struct SpawnInfluence {
     cell_cord_prec y0;
     cell_cord_prec r0;
     Control* control;
-    
-    inline bool intersect(cell_cord_prec x1, cell_cord_prec y1, cell_cord_prec r1) {
+
+    inline bool intersect(cell_cord_prec x1, cell_cord_prec y1,
+                          cell_cord_prec r1) {
         const cell_cord_prec dx = x0 - x1;
         const cell_cord_prec dy = y0 - y1;
         const cell_cord_prec rSum = r0 + r1;
@@ -56,7 +57,6 @@ constexpr uint32_t QUERY_LEVEL = 10;
 static inline thread_local std::mt19937 generator;
 
 struct Engine {
-
     struct {
         float spawn_cells;
         float handle_io;
@@ -102,7 +102,7 @@ struct Engine {
     uint64_t __llog = 0;
     uint64_t __lbmm = 0;
     uint64_t __perk = 0;
-    
+
     atomic<uint16_t> players = 0;
     atomic<cell_cord_prec> playerMass = 0;
     atomic<cell_cord_prec> botMass = 0;
@@ -113,6 +113,8 @@ struct Engine {
     bool shouldRestart = false;
 
     Cell* pool;
+    Boost* boosts;
+
     LooseQuadTree<0.25f>* tree;
 
     atomic<uint32_t> __next_cell_id;
@@ -164,34 +166,34 @@ struct Engine {
     virtual void reset();
     virtual void tick(float dt);
 
-    virtual void restart(bool clearMemory = true) {};
+    virtual void restart(bool clearMemory = true){};
 
     virtual uint32_t getPelletCount() { return 0; };
-    virtual void spawnPellets() {};
-    virtual void spawnViruses() {};
-    virtual void updatePerks() {};
-    virtual void spawnBots() {};
-    virtual void spawnPlayers() {};
-    virtual void virus(cell_cord_prec x, cell_cord_prec y) {};
+    virtual void spawnPellets(){};
+    virtual void spawnViruses(){};
+    virtual void updatePerks(){};
+    virtual void spawnBots(){};
+    virtual void spawnPlayers(){};
+    virtual void virus(cell_cord_prec x, cell_cord_prec y){};
 
-    virtual void handleIO(float dt) {};
-    virtual void removeCells() {};
-    virtual void updateCells(float dt) {};
-    virtual void resolve(float dt) {};
-    virtual void postResolve() {};
+    virtual void handleIO(float dt){};
+    virtual void removeCells(){};
+    virtual void updateCells(float dt){};
+    virtual void resolve(float dt){};
+    virtual void postResolve(){};
 
     // Helper functions
     virtual void delayKill(Control* control, bool replace = false);
     virtual void delaySpawn(Control* control);
-    
-    virtual void kill(Control* control, bool replace = false) {};
+
+    virtual void kill(Control* control, bool replace = false){};
     virtual bool freeHandle(GameHandle* handle);
-    
+
     virtual string_view getInitMessage() { return ""; };
     virtual string_view getExtState() { return ""; };
 
-    virtual void syncState() {};
-    virtual void setExtState(string_view buf) {};
+    virtual void syncState(){};
+    virtual void setExtState(string_view buf){};
 
     mutex m;
     uint16_t id;
@@ -201,21 +203,21 @@ struct Engine {
 
     bool start();
     bool stop();
-    
+
     uint64_t now() { return __now; };
     float uptime() { return (__now - __start) / 1000 / 1000 / 1000.f; };
 
-    virtual void gc() {};
+    virtual void gc(){};
 
-    template<typename F, typename ... Args>
-    void emit(F&& f, Args&& ... args) {
+    template <typename F, typename... Args>
+    void emit(F&& f, Args&&... args) {
         for (auto h : handles) (h->*f)(args...);
     }
-    
+
     virtual cell_id_t cell_id(Cell*& cell) { return cell - pool; };
     virtual cell_id_t cell_id(Cell& cell) { return &cell - pool; };
 
-    template<typename SyncCallback>
+    template <typename SyncCallback>
     void sync(const SyncCallback& cb) {
         m.lock();
         cb();
@@ -224,16 +226,16 @@ struct Engine {
 
     virtual uint32_t extFlags() { return 0; };
 
-    enum class EventType {
-        JOIN, LEAVE, ROCK_WIN
-    };
+    enum class EventType { JOIN, LEAVE, ROCK_WIN };
 
     void infoEvent(GameHandle* handle, EventType type);
 
     virtual cell_cord_prec rngAngle() { return 0.; };
 
-    virtual void queryGridPL(AABB& aabb, const std::function<void(Cell*)> func) {};
-    virtual void queryGridEV(AABB& aabb, const std::function<void(Cell*)> func) {};
+    virtual void queryGridPL(AABB& aabb,
+                             const std::function<void(Cell*)> func){};
+    virtual void queryGridEV(AABB& aabb,
+                             const std::function<void(Cell*)> func){};
 
     template <typename QueryFunc>
     inline void queryTree(AABB& aabb, const QueryFunc& func) {
@@ -241,16 +243,15 @@ struct Engine {
     };
 
     inline void countTreeItems(uint32_t* out, uint32_t count) {
-        tree->countItems(out, count); 
+        tree->countItems(out, count);
     };
 };
 
-template<OPT const& T>
+template <OPT const& T>
 struct TemplateEngine : Engine {
-
-    cell_cord_prec rngAngle() { 
+    cell_cord_prec rngAngle() {
         std::uniform_real_distribution<cell_cord_prec> randomAngle(0, 2 * M_PI);
-        return randomAngle(generator); 
+        return randomAngle(generator);
     }
 
     // Templated data structures
@@ -262,10 +263,12 @@ struct TemplateEngine : Engine {
     vector<SpawnInfluence> influences;
 
     TemplateEngine(Server* server, uint16_t id = 0);
-    virtual ~TemplateEngine() {};
+    virtual ~TemplateEngine(){};
 
-    virtual void addHandle(GameHandle* handle, uint16_t id = 0) { Engine::addHandle(handle, id); };
-    
+    virtual void addHandle(GameHandle* handle, uint16_t id = 0) {
+        Engine::addHandle(handle, id);
+    };
+
     Cell& newCell();
 
     const char* mode() { return T.MODE; };
@@ -276,8 +279,10 @@ struct TemplateEngine : Engine {
     const cell_cord_prec getBotSpawnSize() { return T.BOT_SPAWN_SIZE; };
     const cell_cord_prec getMinEjectSize() { return T.PLAYER_MIN_EJECT_SIZE; };
     const cell_cord_prec getMinSplitSize() { return T.PLAYER_MIN_SPLIT_SIZE; };
-    
+
     const size_t poolSize() { return sizeof(Cell) * T.CELL_LIMIT; };
+    const size_t boostSize() { return sizeof(Boost) * T.CELL_LIMIT; };
+
     const Rect getMap() { return map; };
     const BotAI* getAI() { return T.AI; };
     const cell_cord_prec minPerkSize() { return T.MIN_PERK_SIZE; };
@@ -310,28 +315,36 @@ struct TemplateEngine : Engine {
     virtual bool spawnPlayerControl(Control*& c);
 
     void kill(Control* control, bool replace);
-    
+
     inline Point randomPoint(cell_cord_prec size,
-        cell_cord_prec xmin = -T.MAP_HW, cell_cord_prec xmax = T.MAP_HW,
-        cell_cord_prec ymin = -T.MAP_HH, cell_cord_prec ymax = T.MAP_HH);
-    inline BoolPoint getPlayerSpawnPoint(Control* control, cell_cord_prec size, bool avoidCenter = false);
-    inline BoolPoint getSafeSpawnPoint(cell_cord_prec size, cell_cord_prec safeSize);
-    inline BoolPoint getSafeSpawnFromInflu(cell_cord_prec size, cell_cord_prec safeSize);
+                             cell_cord_prec xmin = -T.MAP_HW,
+                             cell_cord_prec xmax = T.MAP_HW,
+                             cell_cord_prec ymin = -T.MAP_HH,
+                             cell_cord_prec ymax = T.MAP_HH);
+    inline BoolPoint getPlayerSpawnPoint(Control* control, cell_cord_prec size,
+                                         bool avoidCenter = false);
+    inline BoolPoint getSafeSpawnPoint(cell_cord_prec size,
+                                       cell_cord_prec safeSize);
+    inline BoolPoint getSafeSpawnFromInflu(cell_cord_prec size,
+                                           cell_cord_prec safeSize);
 
     Cell* splitFromCell(Cell* cell, cell_cord_prec size, Boost boost);
     bool boostCell(Cell& cell, float& dt);
     void bounceCell(Cell& cell);
-    void movePlayerCell(Cell& cell, float& dt, cell_cord_prec& mouseX, cell_cord_prec& mouseY, 
-        uint8_t& lineLocked, uint16_t& flags, cell_cord_prec& multi);
+    void movePlayerCell(Cell& cell, float& dt, cell_cord_prec& mouseX,
+                        cell_cord_prec& mouseY, uint8_t& lineLocked,
+                        uint16_t& flags, cell_cord_prec& multi);
 
     virtual void syncState();
 
-    virtual void queryGridPL(AABB& aabb, const std::function<void(Cell*)> func) override {
+    virtual void queryGridPL(AABB& aabb,
+                             const std::function<void(Cell*)> func) override {
         bool escape = false;
         Grid_PL.query(aabb, func, escape);
     }
 
-    virtual void queryGridEV(AABB& aabb, const std::function<void(Cell*)> func) override {
+    virtual void queryGridEV(AABB& aabb,
+                             const std::function<void(Cell*)> func) override {
         bool escape = false;
         Grid_EV.query(aabb, func, escape);
     }
@@ -347,7 +360,7 @@ static void filterCells(vector<Cell*>& cells, vector<Cell*>& removed) {
     for (uint32_t i = 0; i < cells.size(); i++) {
         auto& cell = cells[i];
         if (cell->flag & REMOVE_BIT) {
-            removed.push_back(cell);   
+            removed.push_back(cell);
         } else {
             if (w_id != i) cells[w_id] = cell;
             w_id++;
@@ -356,12 +369,15 @@ static void filterCells(vector<Cell*>& cells, vector<Cell*>& removed) {
     cells.resize(w_id);
 };
 
-template<OPT const& T, typename MassCallback>
-static void distributeMass(cell_cord_prec cellsLeft, cell_cord_prec mass, const MassCallback& cb) {
+template <OPT const& T, typename MassCallback>
+static void distributeMass(cell_cord_prec cellsLeft, cell_cord_prec mass,
+                           const MassCallback& cb) {
     if (cellsLeft <= 0) return;
-    constexpr cell_cord_prec splitMin = T.PLAYER_MIN_SPLIT_SIZE * T.PLAYER_MIN_SPLIT_SIZE * 0.01f;
+    constexpr cell_cord_prec splitMin =
+        T.PLAYER_MIN_SPLIT_SIZE * T.PLAYER_MIN_SPLIT_SIZE * 0.01f;
     if (T.VIRUS_MONOTONE_POP) {
-        const cell_cord_prec amount = std::min(floor(mass / splitMin), cellsLeft);
+        const cell_cord_prec amount =
+            std::min(floor(mass / splitMin), cellsLeft);
         const cell_cord_prec perPiece = mass / (amount + 1.f);
         for (int i = 0; i < amount; i++) cb(perPiece);
     } else {
@@ -369,7 +385,7 @@ static void distributeMass(cell_cord_prec cellsLeft, cell_cord_prec mass, const 
             int amount = 2;
             cell_cord_prec perPiece;
             while ((perPiece = mass / (amount + 1.f)) >= splitMin &&
-                (amount << 1) <= cellsLeft)
+                   (amount << 1) <= cellsLeft)
                 amount <<= 1;
             for (int i = 0; i < amount; i++) cb(perPiece);
         } else {
@@ -377,8 +393,7 @@ static void distributeMass(cell_cord_prec cellsLeft, cell_cord_prec mass, const 
             cell_cord_prec massLeft = nextMass;
             while (cellsLeft > 0) {
                 if (nextMass / cellsLeft < splitMin) break;
-                while (nextMass >= massLeft && cellsLeft > 1)
-                    nextMass *= 0.5f;
+                while (nextMass >= massLeft && cellsLeft > 1) nextMass *= 0.5f;
                 cb(nextMass);
                 massLeft -= nextMass;
                 cellsLeft--;

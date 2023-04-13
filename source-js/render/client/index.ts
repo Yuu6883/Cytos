@@ -80,7 +80,8 @@ class InputHandler {
     private readonly d_splits = new Uint32Array(2);
     private readonly d_ejects = new Uint8Array(2);
     private readonly d_cursors = [new Int32Array(2), new Int32Array(2)];
-    private readonly unlock_timer = [0, 0];
+    private readonly d_cursor_unlock_timer = [0, 0];
+    private readonly line_unlock_timer = [0, 0];
     private minion_abuz = 0;
 
     public update() {
@@ -100,25 +101,34 @@ class InputHandler {
         const v = this.client.vports;
 
         if (this.client.hotkeys.minionMode.v) {
-            this.d_cursors[0].set(live ? c.slice(0, 2) : [v[0], v[1]]);
-            this.d_cursors[1].set(live ? c.slice(0, 2) : [v[2], v[3]]);
+            if (Date.now() > this.d_cursor_unlock_timer[0]) {
+                this.d_cursors[0].set(live ? c.slice(0, 2) : [v[0], v[1]]);
+            }
+            if (Date.now() > this.d_cursor_unlock_timer[1]) {
+                this.d_cursors[1].set(live ? c.slice(0, 2) : [v[2], v[3]]);
+            }
         } else {
             // Otherwise only sync active tab
             const t = this.tab;
-            this.d_cursors[t].set(live ? c.slice(0, 2) : [v[t * 2 + 0], v[t * 2 + 1]]);
+            if (Date.now() > this.d_cursor_unlock_timer[this.tab]) {
+                const t = this.tab;
+                this.d_cursors[t].set(
+                    live ? c.slice(0, 2) : [v[t * 2 + 0], v[t * 2 + 1]],
+                );
+            }
         }
         this.d_macro[this.tab] = this.macro;
 
         for (let tab = 0; tab <= 1; tab++) {
             // Tab is line locked
             if ((this.client.flags[tab] >> 1) & 0x3) {
-                const t = this.unlock_timer[tab];
+                const t = this.line_unlock_timer[tab];
                 // Auto line unlock timer expired
                 if (t && Date.now() >= t) {
                     this.d_line[tab] = true;
                 }
             } else {
-                this.unlock_timer[tab] = 0;
+                this.line_unlock_timer[tab] = 0;
             }
 
             input.data[tab] = {
@@ -157,10 +167,11 @@ class InputHandler {
             this.client.hotkeys.autoUnlockLine.v &&
             this.client.hotkeys.autoUnlockLineTimeout.v
         ) {
-            this.unlock_timer[this.tab] =
+            this.line_unlock_timer[this.tab] =
                 Date.now() + this.client.hotkeys.autoUnlockLineTimeout.v;
         }
         this.d_splits[this.tab] = value;
+        this.sync_cursor();
     }
 
     set ejects(value: number) {
@@ -177,6 +188,40 @@ class InputHandler {
 
     set line(value: boolean) {
         this.d_line[this.tab] = value;
+    }
+
+    private sync_cursor() {
+        const m = this.client.mouseOutTimestamp;
+        const c = this.client.cursor.position;
+        const live = !m || Date.now() - m < 1000;
+        const t = this.tab;
+        this.d_cursors[t].set(
+            live
+                ? c.slice(0, 2)
+                : [this.client.vports[t * 2 + 0], this.client.vports[t * 2 + 1]],
+        );
+    }
+
+    private sync_cursor_minion() {
+        const m = this.client.mouseOutTimestamp;
+        const c = this.client.cursor.position;
+        const live = !m || Date.now() - m < 1000;
+        const v = this.client.vports;
+
+        this.d_cursors[0].set(live ? c.slice(0, 2) : [v[0], v[1]]);
+        this.d_cursors[1].set(live ? c.slice(0, 2) : [v[2], v[3]]);
+    }
+
+    new_line(value: number) {
+        this.splits += value;
+        this.d_cursor_unlock_timer[this.tab] =
+            Date.now() + this.client.hotkeys.autoUnlockLineTimeout.v;
+    }
+
+    new_line_minion(value: number) {
+        this.minion_splits += value;
+        this.d_cursor_unlock_timer[1 - this.tab] =
+            Date.now() + this.client.hotkeys.autoUnlockLineTimeout.v;
     }
 
     get minion_macro() {
@@ -201,6 +246,7 @@ class InputHandler {
 
     set minion_splits(value: number) {
         this.d_splits[1 - this.tab] = value;
+        this.sync_cursor_minion();
     }
 
     set minion_ejects(value: number) {
