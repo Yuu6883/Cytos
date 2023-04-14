@@ -24,6 +24,8 @@ export const Mouse: { [k: string]: S<number> } = {
     left: new S('left', 0),
     middle: new S('middle', 0),
     right: new S('right', 0),
+    mouse4: new S('mouse4', 0),
+    mouse5: new S('mouse5', 0),
 };
 
 export const MiceList = [
@@ -35,5 +37,11 @@ export const MiceList = [
     }),
     new Setting(Mouse.right, 2, {
         text: 'Right Click',
+    }),
+    new Setting(Mouse.mouse4, 2, {
+        text: 'Mouse Button 4',
+    }),
+    new Setting(Mouse.mouse5, 2, {
+        text: 'Mouse Button 5',
     }),
 ];

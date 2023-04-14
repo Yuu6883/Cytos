@@ -60,6 +60,7 @@ export class HotkeyHandler {
         // e.preventDefault();
         const type = this.getMouseType(e);
         const mouse = Mouse[type];
+        if (!mouse) return;
 
         const c = Client.instance;
         const p = c.input;
@@ -156,7 +157,7 @@ export class HotkeyHandler {
                 type = 'right';
                 break;
             default:
-                type = `button${e.button + 1}`;
+                type = `mouse${e.button + 1}`;
                 break;
         }
         return type;
