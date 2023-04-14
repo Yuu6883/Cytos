@@ -338,7 +338,7 @@ CYTOS_IMPL(getVersion) {
     auto ctx = iso->GetCurrentContext();
 
     auto obj = Object::New(iso);
-    set(obj, lit("version"), lit("CYTOS 0.0.3"));
+    set(obj, lit("version"), lit("CYTOS 0.0.4"));
     set(obj, lit("timestamp"), num(server->timestamp));
     set(obj, lit("compile"), lit(COMPILE_TIME));
 
