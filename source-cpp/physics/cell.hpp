@@ -206,7 +206,7 @@ constexpr size_t CELL_T_SIZE = sizeof(Cell);
 constexpr size_t BOOST_T_SIZE = sizeof(Boost);
 
 static_assert(CELL_T_SIZE == 64, "CELL_T_SIZE must be 64");
-static_assert(BOOST_T_SIZE == 32, "BOOST_T_SIZE must be 64");
+static_assert(BOOST_T_SIZE == 32, "BOOST_T_SIZE must be 32");
 
 struct CellCacheNoID {
     uint32_t type;
@@ -234,4 +234,4 @@ struct CellCache {
     }
 };
 
-// constexpr size_t CELL_T_SIZE = sizeof(Cell);
+constexpr size_t CELL_CACHE_T_SIZE = sizeof(CellCache);

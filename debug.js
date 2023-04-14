@@ -55,7 +55,7 @@ const client = {
     scores: new Float32Array(2),
     map: new Float32Array(2),
 
-    debugOutput: {},
+    timings: {},
 };
 
 // const Renderer = require("./build/Debug/gfx-addon.node");

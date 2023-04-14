@@ -1,6 +1,6 @@
 import { createState, none } from '@hookstate/core';
 import Client from '../client';
-import { CytosTimings } from '../types';
+import { CytosRenderTimings, CytosTimings } from '../types';
 
 export interface SimpleUserInfo {
     id: number;
@@ -43,6 +43,7 @@ export interface INerdStats {
     bandwidth: number;
     gpuBandwidth: number;
     timings?: CytosTimings;
+    renderTimings?: Partial<CytosRenderTimings>;
 }
 
 export enum ChatType {
@@ -110,6 +111,7 @@ export const HUDStore = {
         bandwidth: 0,
         gpuBandwidth: 0,
         timings: null,
+        renderTimings: null,
     }),
     displayIndex: createState<number>(0),
     messages: createState<{

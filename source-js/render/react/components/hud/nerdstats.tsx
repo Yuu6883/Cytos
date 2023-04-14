@@ -154,6 +154,29 @@ export const NerdStats = () => {
                     style={{ gridTemplateColumns: '120px auto' }}
                 />
             </details>
+            {stats.renderTimings && (
+                <details>
+                    <summary>Render Timings</summary>
+                    <NerdStatsItem
+                        k="Prep Objects"
+                        value={ms(stats.renderTimings.prep)}
+                    />
+                    <NerdStatsItem
+                        k="Update Cells"
+                        value={ms(stats.renderTimings.update)}
+                    />
+                    <NerdStatsItem
+                        k="Remove Cells"
+                        value={ms(stats.renderTimings.remove)}
+                    />
+                    <NerdStatsItem k="Sort Array" value={ms(stats.renderTimings.sort)} />
+                    <NerdStatsItem
+                        k="Fill Render Buffer"
+                        value={ms(stats.renderTimings.buffer)}
+                    />
+                    <NerdStatsItem k="Total" value={ms(stats.renderTimings.total)} />
+                </details>
+            )}
             <p>Press F1 to hide stats</p>
         </div>
     );

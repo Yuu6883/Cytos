@@ -44,7 +44,7 @@ import { basicPopup } from '../react/components/panels/menu/views/popups';
 import { Hotkeys } from './settings/keybinds';
 import { SYS } from './util/sys_message';
 import { GetInputs } from '../stores/inputs';
-import { CytosTimings, CytosVersion, CytosInputData } from '../types';
+import { CytosTimings, CytosVersion, CytosInputData, CytosRenderTimings } from '../types';
 import { CurrServer } from '../stores/servers';
 
 const CIRCLE_RADIUS = 512;
@@ -344,7 +344,7 @@ export default class Client {
     visualizer: Visualizer;
 
     debug = false;
-    readonly debugOutput = {};
+    readonly timings: Partial<CytosRenderTimings> = {};
 
     mapProg: WebGLProgram;
     spriteProg: WebGLProgram;
@@ -558,7 +558,12 @@ export default class Client {
                         }
                     }
                     // Could be null
-                    if (timings !== undefined) HUDStore.nerdStats.timings.set(timings);
+                    if (timings !== undefined) {
+                        HUDStore.nerdStats.batch(stats => {
+                            stats.timings.set(timings);
+                            stats.renderTimings.set(this.timings);
+                        });
+                    }
                     if (version) {
                         this.upsince = version.timestamp;
                         HUDStore.nerdStats.version.set(version.version);
@@ -715,9 +720,10 @@ export default class Client {
             }
 
             const len = RenderModule.render(this, lerp, dt, this.debug);
+
             if (this.debug) {
                 this.debug = false;
-                console.log(this.debugOutput);
+                // console.log(this.timings);
             }
 
             const glBuffer = this.buffers.get('s');

@@ -13,6 +13,15 @@ export interface CytosTimings {
     counter: number[];
 }
 
+export interface CytosRenderTimings {
+    prep: number;
+    update: number;
+    remove: number;
+    sort: number;
+    buffer: number;
+    total: number;
+}
+
 export interface CytosVersion {
     version: string;
     timestamp: number;

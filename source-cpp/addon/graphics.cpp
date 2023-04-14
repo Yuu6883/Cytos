@@ -4,6 +4,8 @@
 #include <uv.h>
 #include <v8.h>
 
+#include <algorithm>
+#include <execution>
 #include <sstream>
 
 #include "../misc/reader.hpp"
@@ -55,6 +57,14 @@ struct ClientState {
 
     int color_offset;
 
+    struct {
+        float prep;
+        float update;
+        float remove;
+        float sort;
+        float buffer;
+    } timings;
+
     ClientState() {
         memset(&charText, 0, sizeof(charText));
         init();
@@ -100,6 +110,8 @@ struct ClientState {
 
     bool update(float lerp, float dt, bool animateFood, bool renderFood,
                 Viewport v) {
+        uint64_t t0 = hrtime(), t1, t2, t3;
+
         if (cells.size() + removing.size() + freed.size() != MAX_CELL_LIMIT) {
             return false;
         }
@@ -134,9 +146,16 @@ struct ClientState {
                            }),
             removing.end());
 
+        timings.remove = time_func(t1, t2);
+
         // Ascend, draw smaller cells first since we are not doing Z-test
-        std::sort(rendering.begin(), rendering.end(),
+        // std::sort(rendering.begin(), rendering.end(),
+        //           [](auto a, auto b) { return a->cR <= b->cR; });
+
+        std::sort(std::execution::par_unseq, rendering.begin(), rendering.end(),
                   [](auto a, auto b) { return a->cR <= b->cR; });
+
+        timings.sort = time_func(t2, t3);
 
         return true;
     }
@@ -335,6 +354,8 @@ void postInit(const FunctionCallbackInfo<Value>& args) {
 }
 
 void render(const FunctionCallbackInfo<Value>& args) {
+    uint64_t prep_start = hrtime(), prep_end;
+
     auto state =
         static_cast<ClientState*>(Local<External>::Cast(args.Data())->Value());
     auto iso = args.GetIsolate();
@@ -345,7 +366,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
     auto dt = (float)args[2]->NumberValue(ctx).ToChecked();
     auto debug = args[3]->BooleanValue(iso);
 
-    auto debugOutput = fieldTyped(clientObj, "debugOutput", Object);
+    auto timings = fieldTyped(clientObj, "timings", Object);
 
     // Read player data into packed flat array so indexing will be faster in the
     // render loop
@@ -523,6 +544,8 @@ void render(const FunctionCallbackInfo<Value>& args) {
     colorField(foodColor);
     colorField(ejectColor);
 
+    state->timings.prep = time_func(prep_start, prep_end);
+
     if (!state->update(lerp, dt, animateFood, renderFood, viewport)) {
         iso->ThrowException(Exception::RangeError(String::NewFromUtf8Literal(
             iso, "Cell pool integrity check failed")));
@@ -538,7 +561,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
     char mass_buffer[64];
 
-    auto start = hrtime();
+    auto buffer_start = hrtime();
 
     size_t write_index = 0;
     for (auto cell : state->rendering) {
@@ -695,11 +718,24 @@ void render(const FunctionCallbackInfo<Value>& args) {
         }
     }
 
-    auto end = hrtime();
+    uint64_t buffer_end;
+    state->timings.buffer = time_func(buffer_start, buffer_end);
 
-    float debugVar = (end - start) / 1000.f / 1000.f;
-    debugOutput->Set(ctx, String::NewFromUtf8Literal(iso, "buffering"),
-                     Number::New(iso, debugVar));
+    timings->Set(ctx, String::NewFromUtf8Literal(iso, "prep"),
+                 Number::New(iso, state->timings.prep));
+    timings->Set(ctx, String::NewFromUtf8Literal(iso, "update"),
+                 Number::New(iso, state->timings.update));
+    timings->Set(ctx, String::NewFromUtf8Literal(iso, "remove"),
+                 Number::New(iso, state->timings.remove));
+    timings->Set(ctx, String::NewFromUtf8Literal(iso, "sort"),
+                 Number::New(iso, state->timings.sort));
+    timings->Set(ctx, String::NewFromUtf8Literal(iso, "buffer"),
+                 Number::New(iso, state->timings.buffer));
+
+    uint64_t total_end;
+    timings->Set(ctx, String::NewFromUtf8Literal(iso, "total"),
+                 Number::New(iso, time_func(prep_start, total_end)));
+
     args.GetReturnValue().Set(Number::New(iso, write_index));
 }
 
