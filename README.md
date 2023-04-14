@@ -11,14 +11,14 @@
 
 # Benchmarks
 * 12800 x 12800 map
-* 369 max cells per player
+* 420 max cells per player
 * 1000 bots which randomly split and feed if the load is below 75% so the engine is not overloaded too much
 * 10000 pellets (not rendered if viewport is greater than a threshold but still handled)
 
 ### Benchmark 1 - Desktop
 | Specs  | Result |
 | ------ | ------ |
-| Ryzen 7 5800x & 3070Ti, using 8 threads (bind to core)  | Way overkill with the hardware, average 20-30% load with ~40,000 cells being rendered at 75FPS (~150FPS with vsync disabled)  |
+| Ryzen 7 5800x & 7900xtx, using 8 threads (bind to core)  | Average 50% load with ~50,000 cells being rendered at 120 FPS  |
 
 https://user-images.githubusercontent.com/38842891/153801485-576679fc-9768-4d7f-b844-cc04afaad05d.mp4
 
