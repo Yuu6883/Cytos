@@ -120,30 +120,34 @@ struct ClientState {
         rendering.clear();
         rendering.reserve(cells.size() + removing.size());
 
+        auto rMin = std::min(v.r - v.l, v.t - v.b) * 0.0003f;
+
         for (auto& cell : cells) {
             if (!renderFood && cell->type == PELLET_TYPE) continue;
             cell->update(lerp, dt, animateFood);
-            if (cell->cX - cell->cR < v.r && cell->cX + cell->cR > v.l &&
-                cell->cY - cell->cR < v.t && cell->cY + cell->cR > v.b)
+            if (cell->cR > rMin && cell->cX - cell->cR < v.r &&
+                cell->cX + cell->cR > v.l && cell->cY - cell->cR < v.t &&
+                cell->cY + cell->cR > v.b)
                 rendering.push_back(cell);
         }
 
+        timings.update = time_func(t0, t1);
+
         removing.erase(
-            std::remove_if(removing.begin(), removing.end(),
-                           [&](RenderCell*& cell) {
-                               if (cell->removeUpdate(dt)) {
-                                   freed.push_back(cell);  // "free" the cell
-                                   return true;
-                               }
-                               if (!renderFood && cell->type == PELLET_TYPE)
-                                   return false;
-                               if (cell->cX - cell->cR < v.r &&
-                                   cell->cX + cell->cR > v.l &&
-                                   cell->cY - cell->cR < v.t &&
-                                   cell->cY + cell->cR > v.b)
-                                   rendering.push_back(cell);
-                               return false;  // Keep the cell in the array
-                           }),
+            std::remove_if(
+                removing.begin(), removing.end(),
+                [&](RenderCell*& cell) {
+                    if (cell->removeUpdate(dt)) {
+                        freed.push_back(cell);  // "free" the cell
+                        return true;
+                    }
+                    if (!renderFood && cell->type == PELLET_TYPE) return false;
+                    if (cell->cR > rMin && cell->cX - cell->cR < v.r &&
+                        cell->cX + cell->cR > v.l &&
+                        cell->cY - cell->cR < v.t && cell->cY + cell->cR > v.b)
+                        rendering.push_back(cell);
+                    return false;  // Keep the cell in the array
+                }),
             removing.end());
 
         timings.remove = time_func(t1, t2);
@@ -163,69 +167,52 @@ struct ClientState {
 
 constexpr size_t state_size = sizeof(ClientState);
 
-inline void writeVertices(float* buffer, size_t& i, float x0, float y0,
-                          float x1, float y1, float uv_x0, float uv_y0,
-                          float uv_x1, float uv_y1, Color color, float alpha,
-                          uint8_t texUnit) {
-    buffer[i++] = x0;
-    buffer[i++] = y0;
-    buffer[i++] = uv_x0;
-    buffer[i++] = uv_y1;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+inline void writeVertices(float* buffer0, size_t& i0, uint8_t* buffer1,
+                          size_t& i1, float x0, float y0, float x1, float y1,
+                          float uv_x0, float uv_y0, float uv_x1, float uv_y1,
+                          Color color, float alpha, uint8_t texUnit) {
+    uint8_t r = uint8_t(color.r * 255);
+    uint8_t g = uint8_t(color.g * 255);
+    uint8_t b = uint8_t(color.b * 255);
+    uint8_t a = uint8_t(alpha * 255);
 
-    buffer[i++] = x1;
-    buffer[i++] = y0;
-    buffer[i++] = uv_x1;
-    buffer[i++] = uv_y1;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x0;
+    buffer0[i0++] = y0;
+    buffer0[i0++] = uv_x0;
+    buffer0[i0++] = uv_y1;
 
-    buffer[i++] = x0;
-    buffer[i++] = y1;
-    buffer[i++] = uv_x0;
-    buffer[i++] = uv_y0;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x1;
+    buffer0[i0++] = y0;
+    buffer0[i0++] = uv_x1;
+    buffer0[i0++] = uv_y1;
 
-    buffer[i++] = x1;
-    buffer[i++] = y0;
-    buffer[i++] = uv_x1;
-    buffer[i++] = uv_y1;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x0;
+    buffer0[i0++] = y1;
+    buffer0[i0++] = uv_x0;
+    buffer0[i0++] = uv_y0;
 
-    buffer[i++] = x0;
-    buffer[i++] = y1;
-    buffer[i++] = uv_x0;
-    buffer[i++] = uv_y0;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x1;
+    buffer0[i0++] = y0;
+    buffer0[i0++] = uv_x1;
+    buffer0[i0++] = uv_y1;
 
-    buffer[i++] = x1;
-    buffer[i++] = y1;
-    buffer[i++] = uv_x1;
-    buffer[i++] = uv_y0;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x0;
+    buffer0[i0++] = y1;
+    buffer0[i0++] = uv_x0;
+    buffer0[i0++] = uv_y0;
+
+    buffer0[i0++] = x1;
+    buffer0[i0++] = y1;
+    buffer0[i0++] = uv_x1;
+    buffer0[i0++] = uv_y0;
+
+    for (uint8_t i = 0; i < 6; i++) {
+        buffer1[i1++] = r;
+        buffer1[i1++] = g;
+        buffer1[i1++] = b;
+        buffer1[i1++] = a;
+        buffer1[i1++] = texUnit;
+    }
 }
 
 inline void writeQuadVertices(float* buffer, size_t& i, float x0, float y0,
@@ -366,7 +353,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
     auto dt = (float)args[2]->NumberValue(ctx).ToChecked();
     auto debug = args[3]->BooleanValue(iso);
 
-    auto timings = fieldTyped(clientObj, "timings", Object);
+    auto timings = fieldTyped(clientObj, "r_timings", Object);
 
     // Read player data into packed flat array so indexing will be faster in the
     // render loop
@@ -419,14 +406,28 @@ void render(const FunctionCallbackInfo<Value>& args) {
     auto lastRAF =
         fieldTyped(clientObj, "lastRAF", Value)->IntegerValue(ctx).ToChecked();
 
-    // Dumb way to load the pointer in, because electron still hasn't fixed
-    // their node.lib
-    auto floatArr = fieldTyped(clientObj, "spriteBuffer", Float32Array);
-    auto v8buf = floatArr->Buffer();
-    auto nodeBuffer =
-        node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength()).ToLocalChecked();
-    auto buffer =
-        reinterpret_cast<float*>(node::Buffer::Data(nodeBuffer.As<Object>()));
+    float* buffer0;
+    uint8_t* buffer1;
+
+    // Dumb way to load the pointer in, because electron won't fix their
+    // node.lib without another 2 billion abi breaking changes
+    {
+        auto floatArr = fieldTyped(clientObj, "spriteBuffer", Float32Array);
+        auto v8buf = floatArr->Buffer();
+        auto nodeBuffer = node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength())
+                              .ToLocalChecked();
+        buffer0 = reinterpret_cast<float*>(
+            node::Buffer::Data(nodeBuffer.As<Object>()));
+    }
+
+    {
+        auto uint8Arr = fieldTyped(clientObj, "colorBuffer", Uint8Array);
+        auto v8buf = uint8Arr->Buffer();
+        auto nodeBuffer = node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength())
+                              .ToLocalChecked();
+        buffer1 = reinterpret_cast<uint8_t*>(
+            node::Buffer::Data(nodeBuffer.As<Object>()));
+    }
 
 #define loadUV(prefix, tex)                   \
     auto prefix##_UV_X0 = indexFloat(tex, 0); \
@@ -553,7 +554,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
     }
 
     clientObj->Set(ctx, String::NewFromUtf8Literal(iso, "rendercells"),
-                   Number::New(iso, state->rendering.size()));
+                   Number::New(iso, double(state->rendering.size())));
 
     constexpr float CIRCLE_RADIUS = 512;
     constexpr float CIRCLE_PADDING = 6;
@@ -563,7 +564,9 @@ void render(const FunctionCallbackInfo<Value>& args) {
 
     auto buffer_start = hrtime();
 
-    size_t write_index = 0;
+    size_t v_index = 0;
+    size_t c_index = 0;
+
     for (auto cell : state->rendering) {
         const auto& type = cell->type;
         const auto& x = cell->cX;
@@ -572,6 +575,7 @@ void render(const FunctionCallbackInfo<Value>& args) {
         const auto& color = cell->color;
         const auto& alpha = cell->alpha;
 
+#define DATA buffer0, v_index, buffer1, c_index
 #define X0Y0X1Y1 x - r, y - r, x + r, y + r
 
         if ((type & EJECT_BIT) || (type == PELLET_TYPE)) {
@@ -579,29 +583,24 @@ void render(const FunctionCallbackInfo<Value>& args) {
             auto pid = type & PELLET_TYPE;
             auto& p = state->players[pid];
             if (autoTheme && (p.skinState == 1) && (p.flags & SKIN_VALID_BIT)) {
-                writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE),
-                              p.skinTheme, alpha, 1);
+                writeVertices(DATA, X0Y0X1Y1, UVs(CIRCLE), p.skinTheme, alpha,
+                              1);
             } else
-                writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), color,
-                              alpha, 1);
+                writeVertices(DATA, X0Y0X1Y1, UVs(CIRCLE), color, alpha, 1);
         } else if (type == DEAD_TYPE) {
             auto r = rr * P;
-            writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), color,
-                          alpha * 0.5f, 1);
+            writeVertices(DATA, X0Y0X1Y1, UVs(CIRCLE), color, alpha * 0.5f, 1);
         } else if (type == VIRUS_TYPE) {
             auto r = rr * 1.2f;
-            writeVertices(buffer, write_index, X0Y0X1Y1, UVs(VIRUS), color,
-                          alpha, 1);
+            writeVertices(DATA, X0Y0X1Y1, UVs(VIRUS), color, alpha, 1);
         } else if (type == CYT_TYPE) {
             if (!cytTexValid) continue;
             auto r = rr * 1.1f;
-            writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CYT), color, alpha,
-                          1);
+            writeVertices(DATA, X0Y0X1Y1, UVs(CYT), color, alpha, 1);
         } else if (type == EXP_TYPE) {
             if (!expTexValid) continue;
             auto r = rr * 1.2f;
-            writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CYT), color, alpha,
-                          1);
+            writeVertices(DATA, X0Y0X1Y1, UVs(CYT), color, alpha, 1);
         } else if (type == ROCK_TYPE) {
             if (!rockTexValid) continue;
             const float r = rr * 1.05f;
@@ -609,9 +608,9 @@ void render(const FunctionCallbackInfo<Value>& args) {
             const float c = sinf(cell->rotation);
             const float x0 = -c + s;
             const float y0 = -c - s;
-            writeQuadVertices(buffer, write_index, x + x0, y + y0, x + y0,
-                              y - x0, x - y0, y + x0, x - x0, y - y0, UVs(ROCK),
-                              color, alpha, 1);
+            // writeQuadVertices(buffer, write_index, x + x0, y + y0, x + y0,
+            //                   y - x0, x - y0, y + x0, x - x0, y - y0,
+            //                   UVs(ROCK), color, alpha, 1);
         } else {
             // Player cell
             auto r = rr * P;
@@ -621,12 +620,11 @@ void render(const FunctionCallbackInfo<Value>& args) {
             // Draw skin or circle
             if (renderSkin && !(p.flags & BOT_BIT) &&
                 (p.flags & SKIN_VALID_BIT) && p.skinState == 1) {
-                writeVertices(buffer, write_index, X0Y0X1Y1, p.skinTexUVs[0],
-                              p.skinTexUVs[1], p.skinTexUVs[2], p.skinTexUVs[3],
-                              WHITE, alpha, p.skinTexUnit);
+                writeVertices(DATA, X0Y0X1Y1, p.skinTexUVs[0], p.skinTexUVs[1],
+                              p.skinTexUVs[2], p.skinTexUVs[3], WHITE, alpha,
+                              p.skinTexUnit);
             } else {
-                writeVertices(buffer, write_index, X0Y0X1Y1, UVs(CIRCLE), color,
-                              alpha, 1);
+                writeVertices(DATA, X0Y0X1Y1, UVs(CIRCLE), color, alpha, 1);
             }
 
             // Draw border
@@ -634,12 +632,12 @@ void render(const FunctionCallbackInfo<Value>& args) {
                 if (pid == activePID) {
                     if (renderSkin && (!(p.flags & BOT_BIT)) &&
                         (p.flags & SKIN_VALID_BIT) && p.skinState == 1) {
-                        writeVertices(buffer, write_index, X0Y0X1Y1, UVs(RING),
+                        writeVertices(DATA, X0Y0X1Y1, UVs(RING),
                                       autoTheme ? p.skinTheme : activeColor,
                                       alpha, 1);
                     } else {
                         writeVertices(
-                            buffer, write_index, X0Y0X1Y1, UVs(RING),
+                            DATA, X0Y0X1Y1, UVs(RING),
                             autoTheme
                                 ? EJECTS_COLORS[(pid + state->color_offset) %
                                                 COLOR_COUNT]
@@ -647,8 +645,8 @@ void render(const FunctionCallbackInfo<Value>& args) {
                             alpha, 1);
                     }
                 } else if (showInactive && pid == inactivePID) {
-                    writeVertices(buffer, write_index, X0Y0X1Y1, UVs(RING),
-                                  inactiveColor, alpha, 1);
+                    writeVertices(DATA, X0Y0X1Y1, UVs(RING), inactiveColor,
+                                  alpha, 1);
                 }
             }
 
@@ -657,18 +655,18 @@ void render(const FunctionCallbackInfo<Value>& args) {
                 // Draw Bot Icon
                 if (p.flags & BOT_BIT) {
                     if (botTexValid) {
-                        writeVertices(buffer, write_index, x - BOT_W * r,
-                                      y - BOT_H * r, x + BOT_W * r,
-                                      y + BOT_H * r, UVs(BOT), WHITE, alpha, 1);
+                        writeVertices(DATA, x - BOT_W * r, y - BOT_H * r,
+                                      x + BOT_W * r, y + BOT_H * r, UVs(BOT),
+                                      WHITE, alpha, 1);
                     }
                 } else {
                     if (p.flags & NAME_VALID_BIT) {
                         auto& uvs = p.nameTexUVsWH;
                         float w = uvs[4] * 0.0015f * r;
                         float h = uvs[5] * 0.0015f * r;
-                        writeVertices(buffer, write_index, x - w, y - h, x + w,
-                                      y + h, uvs[0], uvs[1], uvs[2], uvs[3],
-                                      WHITE, alpha, p.nameTexUnit);
+                        writeVertices(DATA, x - w, y - h, x + w, y + h, uvs[0],
+                                      uvs[1], uvs[2], uvs[3], WHITE, alpha,
+                                      p.nameTexUnit);
                     }
                 }
             }
@@ -711,8 +709,8 @@ void render(const FunctionCallbackInfo<Value>& args) {
                     currX += MASS_SCALE_X * data.width * MASS_GAP;
 
                     // BitmapText is on unit2
-                    writeVertices(buffer, write_index, x0, y0, x1, y1, uvs[0],
-                                  uvs[1], uvs[2], uvs[3], WHITE, alpha, 2);
+                    writeVertices(DATA, x0, y0, x1, y1, uvs[0], uvs[1], uvs[2],
+                                  uvs[3], WHITE, alpha, 2);
                 }
             }
         }
@@ -736,7 +734,13 @@ void render(const FunctionCallbackInfo<Value>& args) {
     timings->Set(ctx, String::NewFromUtf8Literal(iso, "total"),
                  Number::New(iso, time_func(prep_start, total_end)));
 
-    args.GetReturnValue().Set(Number::New(iso, write_index));
+    if (v_index / 4 != c_index / 5) {
+        iso->ThrowException(Exception::Error(
+            String::NewFromUtf8Literal(iso, "v_index / 4 != c_index / 5")));
+        return;
+    }
+
+    args.GetReturnValue().Set(Number::New(iso, double(v_index)));
 }
 
 void parse(const FunctionCallbackInfo<Value>& args) {
@@ -787,7 +791,7 @@ void parse(const FunctionCallbackInfo<Value>& args) {
     set(map, 0, num(r.read<float>()));
     set(map, 1, num(r.read<float>()));
 
-    auto curr_size = r.read<uint16_t>();
+    auto curr_size = r.read<uint32_t>();
     auto& cells = state->cells;
     auto& removing = state->removing;
     auto& freed = state->freed;
@@ -814,7 +818,7 @@ void parse(const FunctionCallbackInfo<Value>& args) {
 
     int w_id = 0;
     // Parse the buffer
-    for (uint16_t i = 0; i < curr_size; i++) {
+    for (uint32_t i = 0; i < curr_size; i++) {
         if (w_id < i) cells[w_id] = cells[i];
 
         auto cell = cells[w_id];
@@ -877,8 +881,8 @@ void parse(const FunctionCallbackInfo<Value>& args) {
             auto eatenBy = r.read<uint16_t>();
             cell->animation = 0;
             cell->flags |= EATEN;
-            cell->nX = cells[eatenBy]->cX;
-            cell->nY = cells[eatenBy]->cY;
+            cell->nX = int32_t(cells[eatenBy]->cX);
+            cell->nY = int32_t(cells[eatenBy]->cY);
             removing.push_back(cell);
         } else if (subop == 3) {
             // :dead:
@@ -889,9 +893,9 @@ void parse(const FunctionCallbackInfo<Value>& args) {
 
     cells.resize(w_id);
 
-    auto newCount = r.read<uint16_t>();
+    auto newCount = r.read<uint32_t>();
 
-    for (uint16_t i = 0; i < newCount; i++) {
+    for (uint32_t i = 0; i < newCount; i++) {
         auto cell = state->newCell();
         // Type, x, y, r
         auto type = r.read<uint16_t>();
@@ -911,7 +915,7 @@ void parse(const FunctionCallbackInfo<Value>& args) {
         return;
     }
 
-    args.GetReturnValue().Set(Number::New(iso, cells.size()));
+    args.GetReturnValue().Set(Number::New(iso, double(cells.size())));
 }
 
 void renderV(const FunctionCallbackInfo<Value>& args) {
@@ -921,12 +925,29 @@ void renderV(const FunctionCallbackInfo<Value>& args) {
     auto ctx = iso->GetCurrentContext();
 
     auto clientObj = args[0].As<Object>();
-    auto floatArr = fieldTyped(clientObj, "spriteBuffer", Float32Array);
-    auto v8buf = floatArr->Buffer();
-    auto nodeBuffer =
-        node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength()).ToLocalChecked();
-    auto buffer =
-        reinterpret_cast<float*>(node::Buffer::Data(nodeBuffer.As<Object>()));
+
+    float* buffer0;
+    uint8_t* buffer1;
+
+    // Dumb way to load the pointer in, because electron won't fix their
+    // node.lib without another 2 billion abi breaking changes
+    {
+        auto floatArr = fieldTyped(clientObj, "spriteBuffer", Float32Array);
+        auto v8buf = floatArr->Buffer();
+        auto nodeBuffer = node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength())
+                              .ToLocalChecked();
+        buffer0 = reinterpret_cast<float*>(
+            node::Buffer::Data(nodeBuffer.As<Object>()));
+    }
+
+    {
+        auto uint8Arr = fieldTyped(clientObj, "colorBuffer", Uint8Array);
+        auto v8buf = uint8Arr->Buffer();
+        auto nodeBuffer = node::Buffer::New(iso, v8buf, 0, v8buf->ByteLength())
+                              .ToLocalChecked();
+        buffer1 = reinterpret_cast<uint8_t*>(
+            node::Buffer::Data(nodeBuffer.As<Object>()));
+    }
 
     auto lerp = (float)args[1]->NumberValue(ctx).ToChecked();
     auto dt = (float)args[2]->NumberValue(ctx).ToChecked();
@@ -944,7 +965,9 @@ void renderV(const FunctionCallbackInfo<Value>& args) {
         return;
     }
 
-    size_t write_index = 0;
+    size_t v_index = 0;
+    size_t c_index = 0;
+
     for (auto cell : state->rendering) {
         const auto& type = cell->type;
         const auto& x = cell->cX;
@@ -953,11 +976,17 @@ void renderV(const FunctionCallbackInfo<Value>& args) {
         const auto& alpha = cell->alpha;
 
         const float r = cell->cR * 1.052f * modifier;
-        writeVertices(buffer, write_index, X0Y0X1Y1, 0, 0, 1, 1, color,
+        writeVertices(DATA, X0Y0X1Y1, 0, 0, 1, 1, color,
                       alpha * (type == DEAD_TYPE ? 0.5f : 1.f), 0);
     }
 
-    args.GetReturnValue().Set(Number::New(iso, write_index));
+    if (v_index / 4 != c_index / 5) {
+        iso->ThrowException(Exception::Error(
+            String::NewFromUtf8Literal(iso, "v_index / 4 != c_index / 5")));
+        return;
+    }
+
+    args.GetReturnValue().Set(Number::New(iso, double(v_index)));
 }
 
 #undef fieldTyped

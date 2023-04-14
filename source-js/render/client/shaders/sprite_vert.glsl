@@ -15,5 +15,5 @@ void main() {
     gl_Position = p * vec4(v, 0.0, 1.0);
     uv = u;
     color = c;
-    tex = t;
+    tex = t * 255.0;
 }

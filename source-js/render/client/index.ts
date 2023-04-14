@@ -44,7 +44,12 @@ import { basicPopup } from '../react/components/panels/menu/views/popups';
 import { Hotkeys } from './settings/keybinds';
 import { SYS } from './util/sys_message';
 import { GetInputs } from '../stores/inputs';
-import { CytosTimings, CytosVersion, CytosInputData, CytosRenderTimings } from '../types';
+import {
+    CytosTimings as CytosPhysTimings,
+    CytosVersion,
+    CytosInputData,
+    CytosRenderTimings,
+} from '../types';
 import { CurrServer } from '../stores/servers';
 
 const CIRCLE_RADIUS = 512;
@@ -344,13 +349,16 @@ export default class Client {
     visualizer: Visualizer;
 
     debug = false;
-    readonly timings: Partial<CytosRenderTimings> = {};
+
+    c_timings: CytosPhysTimings = null;
+    readonly r_timings: Partial<CytosRenderTimings> = {};
 
     mapProg: WebGLProgram;
     spriteProg: WebGLProgram;
     vidProg: WebGLProgram;
     discoProg: WebGLProgram;
     readonly spriteBuffer = new Float32Array(65536 * 128); // 16MB vertex data
+    readonly colorBuffer = new Uint8Array(65536 * 128); // 2MB color data
 
     skinStore: TextureStore;
     nameStore: TextureStore;
@@ -475,7 +483,7 @@ export default class Client {
             pid0?: number;
             pid1?: number;
             rock?: number;
-            timings?: CytosTimings;
+            timings?: CytosPhysTimings;
             version?: CytosVersion;
             save?: string;
             bytes?: number;
@@ -558,12 +566,7 @@ export default class Client {
                         }
                     }
                     // Could be null
-                    if (timings !== undefined) {
-                        HUDStore.nerdStats.batch(stats => {
-                            stats.timings.set(timings);
-                            stats.renderTimings.set(this.timings);
-                        });
-                    }
+                    if (timings !== undefined) this.c_timings = timings;
                     if (version) {
                         this.upsince = version.timestamp;
                         HUDStore.nerdStats.version.set(version.version);
@@ -668,8 +671,9 @@ export default class Client {
         this.renderMap();
 
         const gl = this.gl;
+        const vid = this.vidElem;
 
-        if (this.visualizer?.enabled && this.vidElem) {
+        if (this.visualizer?.enabled && vid) {
             gl.useProgram(this.vidProg);
             this.bindVAO(this.spritesVAO);
             gl.uniformMatrix4fv(
@@ -678,36 +682,44 @@ export default class Client {
                 this.proj as Float32Array,
             );
 
-            if (this.vidElem.readyState >= 2) {
+            if (vid.readyState >= 2) {
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, this.vidTex);
-                gl.texSubImage2D(
-                    gl.TEXTURE_2D,
-                    0,
-                    0,
-                    0,
-                    gl.RGBA,
-                    gl.UNSIGNED_BYTE,
-                    this.vidElem,
-                );
+                gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, vid);
+
+                this.gpuBytesUploaded += vid.videoWidth * vid.videoHeight * 4;
             }
 
             const modifier = Math.max(0.96, 1 + 0.5 * (this.visualizer.amp - 0.1));
 
-            const len = RenderModule.renderV(this, lerp, dt, modifier);
+            const vlen = RenderModule.renderV(this, lerp, dt, modifier);
 
-            const glBuffer = this.buffers.get('s');
-            const sub = this.spriteBuffer.subarray(0, len);
+            {
+                const len = vlen;
+                const glBuffer = this.buffers.get('v');
+                const sub = this.spriteBuffer.subarray(0, len);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
-            gl.drawArrays(this.gl.TRIANGLES, 0, len / 9);
+                gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
 
-            this.gpuBytesUploaded +=
-                sub.byteLength + this.vidElem.videoWidth * this.vidElem.videoHeight * 4;
+                this.gpuBytesUploaded += sub.byteLength;
+            }
+
+            {
+                const len = (vlen / 4) * 5;
+                const glBuffer = this.buffers.get('c');
+                const sub = this.colorBuffer.subarray(0, len);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
+
+                this.gpuBytesUploaded += sub.byteLength;
+            }
+
+            this.bindVAO(this.spritesVAO);
+            gl.drawArrays(this.gl.TRIANGLES, 0, vlen / 4);
         } else {
             gl.useProgram(this.spriteProg);
-            this.bindVAO(this.spritesVAO);
             gl.uniformMatrix4fv(
                 this.getUniform(this.spriteProg, 'p'),
                 false,
@@ -719,21 +731,43 @@ export default class Client {
                 this.debug = true;
             }
 
-            const len = RenderModule.render(this, lerp, dt, this.debug);
+            const vlen = RenderModule.render(this, lerp, dt, this.debug);
 
             if (this.debug) {
                 this.debug = false;
                 // console.log(this.timings);
             }
 
-            const glBuffer = this.buffers.get('s');
-            const sub = this.spriteBuffer.subarray(0, len);
+            const upload_start = performance.now();
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
-            gl.drawArrays(this.gl.TRIANGLES, 0, len / 9);
+            {
+                const len = vlen;
+                const glBuffer = this.buffers.get('v');
+                const sub = this.spriteBuffer.subarray(0, len);
 
-            this.gpuBytesUploaded += sub.byteLength;
+                gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
+
+                this.gpuBytesUploaded += sub.byteLength;
+            }
+
+            {
+                const len = (vlen / 4) * 5;
+                const glBuffer = this.buffers.get('c');
+                const sub = this.colorBuffer.subarray(0, len);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, sub);
+
+                this.gpuBytesUploaded += sub.byteLength;
+            }
+
+            const upload_end = performance.now();
+            this.r_timings.upload = upload_end - upload_start;
+            this.r_timings.total += this.r_timings.upload;
+
+            this.bindVAO(this.spritesVAO);
+            gl.drawArrays(this.gl.TRIANGLES, 0, vlen / 4);
         }
     }
 
@@ -975,8 +1009,12 @@ export default class Client {
             HUDStore.nerdStats.batch(s => {
                 s.uptime.set(Date.now() - this.upsince);
                 s.rendercells.set(this.rendercells);
+
                 s.bandwidth.set(this.bytesReceived);
                 s.gpuBandwidth.set(this.gpuBytesUploaded);
+
+                s.physTimings.set(this.c_timings);
+                s.renderTimings.set(this.r_timings);
             });
 
             this.bytesReceived = 0;
@@ -1142,25 +1180,33 @@ export default class Client {
         this.spritesVAO = this.createVAO();
         this.bindVAO(this.spritesVAO);
 
-        const buffer = this.allocBuffer('s');
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, this.spriteBuffer, gl.DYNAMIC_DRAW);
+        {
+            const buffer = this.allocBuffer('v');
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, this.spriteBuffer, gl.DYNAMIC_DRAW);
+        }
 
         const loc1 = gl.getAttribLocation(prog, 'v');
         gl.enableVertexAttribArray(loc1);
-        gl.vertexAttribPointer(loc1, 2, gl.FLOAT, false, 36, 0);
+        gl.vertexAttribPointer(loc1, 2, gl.FLOAT, false, 16, 0);
 
         const loc2 = gl.getAttribLocation(prog, 'u');
         gl.enableVertexAttribArray(loc2);
-        gl.vertexAttribPointer(loc2, 2, gl.FLOAT, false, 36, 8);
+        gl.vertexAttribPointer(loc2, 2, gl.FLOAT, false, 16, 8);
+
+        {
+            const buffer = this.allocBuffer('c');
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, this.colorBuffer, gl.DYNAMIC_DRAW);
+        }
 
         const loc3 = gl.getAttribLocation(prog, 'c');
         gl.enableVertexAttribArray(loc3);
-        gl.vertexAttribPointer(loc3, 4, gl.FLOAT, false, 36, 16);
+        gl.vertexAttribPointer(loc3, 4, gl.UNSIGNED_BYTE, true, 5, 0);
 
         const loc4 = gl.getAttribLocation(prog, 't');
         gl.enableVertexAttribArray(loc4);
-        gl.vertexAttribPointer(loc4, 1, gl.FLOAT, false, 36, 32);
+        gl.vertexAttribPointer(loc4, 1, gl.UNSIGNED_BYTE, true, 5, 4);
     }
 
     public playVid() {
@@ -1244,6 +1290,7 @@ export default class Client {
 
     clear(keepCache = false) {
         this.spriteBuffer.fill(0);
+        this.colorBuffer.fill(0);
         RenderModule.clear();
         keepCache || this.clearCache();
         // this.protocol.lbmm.clear();

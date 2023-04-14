@@ -114,7 +114,7 @@ export const NerdStats = () => {
     const stats = useState(HUDStore.nerdStats).value;
 
     return (
-        <div className={Style.nerd} hidden={!nerdVisible}>
+        <div className={Style.nerd} hidden={!nerdVisible} tabIndex={-1}>
             <NerdStatsItem
                 k="Version"
                 value={stats.version}
@@ -130,7 +130,7 @@ export const NerdStats = () => {
                 value={stats.compile}
                 style={{ gridTemplateColumns: '100px auto' }}
             />
-            {stats.timings && <Timings timings={stats.timings} />}
+            {stats.physTimings && <Timings timings={stats.physTimings} />}
             <details>
                 <summary>Render Stats</summary>
                 <NerdStatsItem
@@ -173,6 +173,10 @@ export const NerdStats = () => {
                     <NerdStatsItem
                         k="Fill Render Buffer"
                         value={ms(stats.renderTimings.buffer)}
+                    />
+                    <NerdStatsItem
+                        k="Upload Render Buffer"
+                        value={ms(stats.renderTimings.upload)}
                     />
                     <NerdStatsItem k="Total" value={ms(stats.renderTimings.total)} />
                 </details>

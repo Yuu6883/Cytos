@@ -42,7 +42,7 @@ export interface INerdStats {
     rendercells: number;
     bandwidth: number;
     gpuBandwidth: number;
-    timings?: CytosTimings;
+    physTimings?: CytosTimings;
     renderTimings?: Partial<CytosRenderTimings>;
 }
 
@@ -110,7 +110,7 @@ export const HUDStore = {
         rendercells: 0,
         bandwidth: 0,
         gpuBandwidth: 0,
-        timings: null,
+        physTimings: null,
         renderTimings: null,
     }),
     displayIndex: createState<number>(0),

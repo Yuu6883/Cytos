@@ -311,13 +311,13 @@ void Player::onTick() {
     memset(ID_LOOKUP, 0, sizeof(ID_LOOKUP));
 
     auto cache_size = cache.size();
-    for (int i = 0; i < cache_size; i++) ID_LOOKUP[cache[i].id] = i;
+    for (uint32_t i = 0; i < cache_size; i++) ID_LOOKUP[cache[i].id] = i;
 
-    w.write<uint16_t>(cache_size);
+    w.write<uint32_t>(cache_size);
 
-    int w_id = 0;
+    uint32_t w_id = 0;
     // Write
-    for (int i = 0; i < cache_size; i++) {
+    for (uint32_t i = 0; i < cache_size; i++) {
         auto& item = cache[i];
         auto out = &cache[i];
         uint8_t& flags = w.ref<uint8_t>(0);
@@ -405,9 +405,9 @@ void Player::onTick() {
     }
 
     auto new_cache_size = NEW_CELL_CACHE.size();
-    w.write<uint16_t>(new_cache_size);
+    w.write<uint32_t>(new_cache_size);
 
-    for (int i = 0; i < new_cache_size; i++) {
+    for (uint32_t i = 0; i < new_cache_size; i++) {
         auto& item = NEW_CELL_CACHE[i];
         w.write<uint16_t>(item.type);
         w.write<int16_t>(item.x);

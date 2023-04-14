@@ -19,6 +19,7 @@ export interface CytosRenderTimings {
     remove: number;
     sort: number;
     buffer: number;
+    upload: number;
     total: number;
 }
 
