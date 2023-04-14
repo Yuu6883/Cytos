@@ -39,15 +39,7 @@ export const ServerItem = ({ data }: Props) => {
             {...tips}
         >
             <span>{data.name}</span>
-            <span className={Style.playerCount}>
-                {data.players >= 0 ? (
-                    <>
-                        {data.players} <i className="far fa-user"></i>
-                    </>
-                ) : (
-                    <i className="fas fa-exclamation-triangle"></i>
-                )}
-            </span>
+            <span className={Style.playerCount}></span>
         </div>
     );
 };

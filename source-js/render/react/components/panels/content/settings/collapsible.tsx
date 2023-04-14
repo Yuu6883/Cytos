@@ -86,15 +86,7 @@ export const ServerCollapsible = ({
                 {...tips}
             >
                 <span>{cat}</span>
-                <span className={ServerStyle.playerCount}>
-                    {disabled ? (
-                        <i className="fas fa-exclamation-triangle"></i>
-                    ) : (
-                        <>
-                            {players} <i className="far fa-user"></i>
-                        </>
-                    )}
-                </span>
+                <span className={ServerStyle.playerCount}></span>
                 <i
                     className="fas fa-chevron-left"
                     style={{

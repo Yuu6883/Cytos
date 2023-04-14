@@ -80,7 +80,8 @@ export const Skins = () => {
             </p>
             <div className={Style.skins}>
                 {Array.from({ length: skins.maxSlots.value }, (_, i) => {
-                    const skin = skins.mySkins.value[i + 2];
+                    const skinIndex = i - 2;
+                    const skin = skins.mySkins.value[skinIndex];
 
                     if (i === 0) {
                         return (
@@ -122,11 +123,11 @@ export const Skins = () => {
                             <Skin
                                 key={skin + i}
                                 url={skin}
-                                onClick={() => onClickItem(i, 1)}
-                                onContextMenu={() => onClickItem(i, 2)}
+                                onClick={() => onClickItem(skinIndex, 1)}
+                                onContextMenu={() => onClickItem(skinIndex, 2)}
                                 isSkin1={inputs.skin1.value === skin}
                                 isSkin2={inputs.skin2.value === skin}
-                                onDelete={e => onDelete(e, i)}
+                                onDelete={e => onDelete(e, skinIndex)}
                             />
                         );
                     } else {

@@ -126,12 +126,12 @@ setTimeout(() => {
 }, 1000);
 
 // Test save & restore
-// setTimeout(() => {
-//     const output = Cytos.save();
-//     console.log(output);
+setTimeout(() => {
+    const output = Cytos.save();
+    console.log(output);
 
-//     setTimeout(() => {
-//         const restored = Cytos.restore(output.mode, output.buffer);
-//         console.log(restored);
-//     }, 1000);
-// }, 2000);
+    setTimeout(() => {
+        const restored = Cytos.restore(output.mode, output.buffer);
+        console.log(restored);
+    }, 1000);
+}, 2000);

@@ -37,7 +37,8 @@ constexpr uint16_t MAX_PLAYERS = ROCK_TYPE - 1;
 
 #define MAX_CELL_LIMIT 131072
 
-static std::mt19937 generator;
+static std::random_device rd;
+static std::mt19937 generator(rd());
 static std::uniform_int_distribution<int> color_offset_dist(0, COLOR_COUNT - 1);
 
 struct Viewport {
@@ -215,70 +216,54 @@ inline void writeVertices(float* buffer0, size_t& i0, uint8_t* buffer1,
     }
 }
 
-inline void writeQuadVertices(float* buffer, size_t& i, float x0, float y0,
-                              float x1, float y1, float x2, float y2, float x3,
-                              float y3, float uv_x0, float uv_y0, float uv_x1,
+inline void writeQuadVertices(float* buffer0, size_t& i0, uint8_t* buffer1,
+                              size_t& i1, float x0, float y0, float x1,
+                              float y1, float x2, float y2, float x3, float y3,
+                              float uv_x0, float uv_y0, float uv_x1,
                               float uv_y1, Color color, float alpha,
                               uint8_t texUnit) {
-    buffer[i++] = x0;
-    buffer[i++] = y0;
-    buffer[i++] = uv_x0;
-    buffer[i++] = uv_y1;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    uint8_t r = uint8_t(color.r * 255);
+    uint8_t g = uint8_t(color.g * 255);
+    uint8_t b = uint8_t(color.b * 255);
+    uint8_t a = uint8_t(alpha * 255);
 
-    buffer[i++] = x1;
-    buffer[i++] = y1;
-    buffer[i++] = uv_x1;
-    buffer[i++] = uv_y1;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x0;
+    buffer0[i0++] = y0;
+    buffer0[i0++] = uv_x0;
+    buffer0[i0++] = uv_y1;
 
-    buffer[i++] = x2;
-    buffer[i++] = y2;
-    buffer[i++] = uv_x0;
-    buffer[i++] = uv_y0;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x1;
+    buffer0[i0++] = y1;
+    buffer0[i0++] = uv_x1;
+    buffer0[i0++] = uv_y1;
 
-    buffer[i++] = x1;
-    buffer[i++] = y1;
-    buffer[i++] = uv_x1;
-    buffer[i++] = uv_y1;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x2;
+    buffer0[i0++] = y2;
+    buffer0[i0++] = uv_x0;
+    buffer0[i0++] = uv_y0;
 
-    buffer[i++] = x2;
-    buffer[i++] = y2;
-    buffer[i++] = uv_x0;
-    buffer[i++] = uv_y0;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x1;
+    buffer0[i0++] = y1;
+    buffer0[i0++] = uv_x1;
+    buffer0[i0++] = uv_y1;
 
-    buffer[i++] = x3;
-    buffer[i++] = y3;
-    buffer[i++] = uv_x1;
-    buffer[i++] = uv_y0;
-    buffer[i++] = color.r;
-    buffer[i++] = color.g;
-    buffer[i++] = color.b;
-    buffer[i++] = alpha;
-    buffer[i++] = texUnit;
+    buffer0[i0++] = x2;
+    buffer0[i0++] = y2;
+    buffer0[i0++] = uv_x0;
+    buffer0[i0++] = uv_y0;
+
+    buffer0[i0++] = x3;
+    buffer0[i0++] = y3;
+    buffer0[i0++] = uv_x1;
+    buffer0[i0++] = uv_y0;
+
+    for (uint8_t i = 0; i < 6; i++) {
+        buffer1[i1++] = r;
+        buffer1[i1++] = g;
+        buffer1[i1++] = b;
+        buffer1[i1++] = a;
+        buffer1[i1++] = texUnit;
+    }
 }
 
 // Welcome to macro HELL
@@ -608,9 +593,9 @@ void render(const FunctionCallbackInfo<Value>& args) {
             const float c = sinf(cell->rotation);
             const float x0 = -c + s;
             const float y0 = -c - s;
-            // writeQuadVertices(buffer, write_index, x + x0, y + y0, x + y0,
-            //                   y - x0, x - y0, y + x0, x - x0, y - y0,
-            //                   UVs(ROCK), color, alpha, 1);
+            writeQuadVertices(DATA, x + x0, y + y0, x + y0, y - x0, x - y0,
+                              y + x0, x - x0, y - y0, UVs(ROCK), color, alpha,
+                              1);
         } else {
             // Player cell
             auto r = rr * P;
