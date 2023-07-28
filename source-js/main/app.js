@@ -68,7 +68,7 @@ class CytosMain {
             this.window.removeMenu();
             this.window.webContents.setZoomFactor(1);
             this.window.show();
-            this.window.webContents.openDevTools();
+            // this.window.webContents.openDevTools();
         });
 
         this.window.on('focus', () => {

@@ -385,24 +385,27 @@ export default class Client {
         HotkeyHandler.init();
 
         return (Client.loadPromise = new Promise((resolve, reject) => {
+            const fontLoaded = async () => {
+                const c = new Client();
+                try {
+                    await c.init();
+                    c.start();
+                } catch (e) {
+                    console.error('OOGA BOOGA');
+                    return reject(e);
+                }
+
+                Client.instance = c;
+                resolve();
+            };
+
             WebFont.load({
                 google: {
                     families: ['Roboto'],
                 },
                 events: true,
-                active: async () => {
-                    const c = new Client();
-                    try {
-                        await c.init();
-                        c.start();
-                    } catch (e) {
-                        console.error('OOGA BOOGA');
-                        return reject(e);
-                    }
-
-                    Client.instance = c;
-                    resolve();
-                },
+                active: fontLoaded,
+                inactive: fontLoaded,
             });
         }));
     }
