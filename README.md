@@ -1,3 +1,5 @@
+
+
 ![CytosBanner](https://user-images.githubusercontent.com/38842891/153798655-ac94c671-d9c0-44b1-9365-65ecdf51c36e.png)
 
 **Cytos:** *The best* performant open source agar.io server & client combined in one project.
@@ -48,7 +50,7 @@ A lot of techniques are borrowed from my older project [OgarX](https://github.co
 All those changes brings about **3-4x single thread speedup** and **~20x speedup with 8 threads.**
 
 # <a href="https://github.com/Yuu6883/Cytos/releases/latest">Download</a>
-Installer currently only available for Windows, but building for other platforms would be possible since `electron` and `cmake-js` are cross platform (see Developement section below)
+Installer currently only available for Windows, but building for other platforms would be possible since `electron` and `cmake-js` are cross platform (see Development section below)
 **Windows will show a warning popup because the installer not a signed binary.**
 
 # Development
@@ -56,7 +58,7 @@ Requirements:
 * cmake > 3.10
 * MSVC / gcc / clang 
 * npm
-* cmake-js installed globablly with `npm i -g cmake-js` (or could be added as a dependency later...)
+* cmake-js installed globally with `npm i -g cmake-js` (or could be added as a dependency later...)
 
 ```bash
 git clone https://github.com/Yuu6883/Cytos.git
